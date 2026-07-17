@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Create User VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2><i data-feather="user-plus" class="feather-lg" style="color:var(--teal-500);"></i> Create New User</h2>
+        <p>Add a staff account with an assigned role and facility.</p>
+    </div>
+    <a href="{{ url_for('auth.list_users') }}" class="btn btn-secondary btn-sm">Back to Users</a>
+</div>
+
+<div class="card" style="max-width:600px;">
+    <form method="POST" action="{{ url_for('auth.create_user') }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="password">Password <span style="font-size:.75rem; color:var(--slate-400);">(min 8 chars)</span></label>
+                <input type="password" id="password" name="password" required minlength="8">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="full_name">Full Name</label>
+            <input type="text" id="full_name" name="full_name" required>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" name="role" required>
+                    <option value="">-- Select Role --</option>
+                    <option value="admin">Admin</option>
+                    <option value="immunisation_officer">Immunisation Officer</option>
+                    <option value="data_entry_clerk">Data Entry Clerk</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="facility_id">Facility</label>
+                <select id="facility_id" name="facility_id" required>
+                    {% for f in facilities %}
+                    <option value="{{ f.facility_id }}">{{ f.facility_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div style="display:flex; gap:.5rem; margin-top:.5rem;">
+            <button type="submit" class="btn btn-primary">Create User</button>
+            <a href="{{ url_for('auth.list_users') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

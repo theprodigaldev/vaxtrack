@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Facility Report VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2><i data-feather="map-pin" class="feather-lg" style="color:var(--teal-500);"></i> Facility Summary Report</h2>
+        <p>Vaccination performance by health facility.</p>
+    </div>
+    <a href="{{ url_for('reports.facility_report', export='csv') }}" class="btn btn-secondary btn-sm">
+        <i data-feather="download"></i> Export CSV
+    </a>
+</div>
+
+<div class="card">
+    <div class="table-wrap">
+    <table>
+        <thead><tr><th>Facility</th><th>LGA</th><th>Enrolled</th><th>Total Appts</th><th>Completed</th><th>Pending</th><th>Overdue</th><th>Completion %</th></tr></thead>
+        <tbody>
+        {% for s in stats %}
+        <tr>
+            <td style="font-weight:600;">{{ s.facility_name }}</td>
+            <td>{{ s.lga }}</td>
+            <td>{{ s.enrolled }}</td>
+            <td>{{ s.total_appointments }}</td>
+            <td><span class="badge badge-success">{{ s.completed }}</span></td>
+            <td><span class="badge badge-warning">{{ s.pending }}</span></td>
+            <td><span class="badge badge-danger">{{ s.missed }}</span></td>
+            <td><strong style="color:{% if s.completion_rate >= 80 %}var(--emerald-600){% elif s.completion_rate >= 50 %}var(--amber-600){% else %}var(--rose-600){% endif %};">{{ s.completion_rate }}%</strong></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}{{ child.first_name }} {{ child.last_name }} VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>{{ child.first_name }} {{ child.last_name }}</h2>
+        <p>Child ID #{{ child.child_id }} &middot; Enrolled {{ child.enrolment_date.strftime('%d %B %Y') }} &middot; {{ child.facility.facility_name }}</p>
+    </div>
+    <a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary btn-sm">Back to Search</a>
+</div>
+
+<!-- Summary stats -->
+{% set overdue_count = appointments | selectattr('scheduled_date', 'lt', today) | selectattr('status', 'eq', 'pending') | list | length %}
+{% set completed_count = appointments | selectattr('status', 'eq', 'completed') | list | length %}
+{% set pending_count = appointments | selectattr('status', 'eq', 'pending') | list | length %}
+<div class="stats-row">
+    <div class="stat-card emerald"><div class="number" data-count="{{ completed_count }}">{{ completed_count }}</div><div class="label">Completed</div></div>
+    <div class="stat-card rose"><div class="number" data-count="{{ overdue_count }}">{{ overdue_count }}</div><div class="label">Overdue</div></div>
+    <div class="stat-card amber"><div class="number" data-count="{{ pending_count }}">{{ pending_count }}</div><div class="label">Pending</div></div>
+    <div class="stat-card teal"><div class="number" data-count="{{ appointments | length }}">{{ appointments | length }}</div><div class="label">Total Doses</div></div>
+</div>
+
+<!-- Patient details -->
+<div class="card card-accent">
+    <h3><i data-feather="user" class="feather-lg" style="color:var(--teal-500);"></i> Patient Details</h3>
+    <div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">Date of Birth</div><div class="detail-value">{{ child.date_of_birth.strftime('%d %B %Y') }}</div></div>
+        <div class="detail-item"><div class="detail-label">Gender</div><div class="detail-value">{{ child.gender }}</div></div>
+        <div class="detail-item"><div class="detail-label">Guardian</div><div class="detail-value">{{ child.guardian_name }}</div></div>
+        <div class="detail-item"><div class="detail-label">Phone</div><div class="detail-value">{{ child.guardian_phone }}</div></div>
+        {% if child.guardian_email %}<div class="detail-item"><div class="detail-label">Email</div><div class="detail-value">{{ child.guardian_email }}</div></div>{% endif %}
+    </div>
+    <div style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap; padding-top:.85rem; border-top:1px solid var(--slate-100);">
+        {% if session.get('role') in ['data_entry_clerk', 'admin'] %}
+        <a href="{{ url_for('patients.edit_child', child_id=child.child_id) }}" class="btn btn-secondary btn-sm">
+            <i data-feather="edit-2"></i> Edit Details
+        </a>
+        <a href="{{ url_for('patients.assign_rfid', child_id=child.child_id) }}" class="btn btn-secondary btn-sm">
+            <i data-feather="credit-card"></i> Assign Card
+        </a>
+        {% endif %}
+        {% if session.get('role') in ['immunisation_officer', 'admin'] %}
+        <form method="POST" action="{{ url_for('patients.flag_defaulter', child_id=child.child_id) }}" class="no-loading" style="display:inline;">
+            <button type="submit" class="btn btn-warning btn-sm"
+                data-confirm="This will mark all overdue pending appointments for this child. Continue?"
+                data-confirm-title="Flag as Defaulter">
+                <i data-feather="flag"></i> Flag Defaulter
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- RFID Cards -->
+<div class="card">
+    <h3><i data-feather="credit-card" class="feather-lg" style="color:var(--teal-500);"></i> RFID Cards</h3>
+    {% if rfid_tags %}
+    <div class="table-wrap">
+    <table>
+        <thead><tr><th>UID</th><th>Status</th><th>Issued</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for tag in rfid_tags %}
+        <tr>
+            <td><code style="background:var(--slate-100); padding:.2rem .5rem; border-radius:4px; font-size:.83rem; font-family:'Courier New',monospace; letter-spacing:1px;">{{ tag.uid_hex }}</code></td>
+            <td>
+                {% if tag.status == 'active' %}<span class="badge badge-success">Active</span>
+                {% else %}<span class="badge badge-secondary">Inactive</span>{% if tag.deactivation_reason %} <span style="font-size:.75rem;color:var(--slate-400);">{{ tag.deactivation_reason }}</span>{% endif %}{% endif %}
+            </td>
+            <td>{{ tag.issue_date.strftime('%d %b %Y') }}</td>
+            <td style="display:flex; gap:.4rem; flex-wrap:wrap;">
+                {% if tag.status == 'active' and session.get('role') in ['data_entry_clerk', 'admin'] %}
+                <form method="POST" action="{{ url_for('patients.deactivate_rfid', tag_id=tag.tag_id) }}" class="no-loading" style="display:contents;">
+                    <input type="hidden" name="reason" value="Manual deactivation">
+                    <button type="submit" class="btn btn-danger btn-sm"
+                        data-confirm="Deactivate card {{ tag.uid_hex }}? It will no longer work."
+                        data-confirm-title="Deactivate Card">Deactivate</button>
+                </form>
+                <form method="POST" action="{{ url_for('patients.replace_rfid', tag_id=tag.tag_id) }}" class="no-loading" style="display:flex; gap:.3rem; align-items:center;">
+                    <input type="text" name="new_uid_hex" placeholder="New UID" required data-uppercase
+                           style="width:110px; padding:.28rem .5rem; font-size:.76rem; border:1.5px solid var(--slate-200); border-radius:4px; font-family:'Courier New',monospace; letter-spacing:1px;">
+                    <input type="hidden" name="reason" value="Card replacement">
+                    <button type="submit" class="btn btn-secondary btn-sm">
+                        <i data-feather="refresh-cw"></i> Replace
+                    </button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p style="color:var(--slate-400); font-size:.875rem;">No RFID cards assigned yet.</p>
+    {% endif %}
+</div>
+
+<!-- Vaccination schedule -->
+<div class="card">
+    <h3>
+        <i data-feather="calendar" class="feather-lg" style="color:var(--teal-500);"></i> Vaccination Schedule
+        {% if session.get('role') in ['immunisation_officer', 'admin'] %}
+        <span style="font-size:.72rem; font-weight:400; color:var(--slate-400);">(click a pending row to record)</span>
+        {% endif %}
+    </h3>
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Vaccine</th><th>Dose</th><th>Scheduled</th><th>Status</th><th>Completed</th>
+                {% if session.get('role') in ['data_entry_clerk', 'admin'] %}<th></th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+        {% for apt in appointments %}
+        {% set v = vaccines.get(apt.vaccine_id) %}
+        {% if apt.status == 'completed' %}
+            {% set row_class = 'row-completed' %}
+            {% set badge = '<span class="badge badge-success">Done</span>' %}
+        {% elif apt.status == 'overdue' %}
+            {% set row_class = 'row-overdue' %}
+            {% set badge = '<span class="badge badge-danger">Overdue</span>' %}
+        {% elif apt.scheduled_date < today %}
+            {% set row_class = 'row-overdue apt-row' %}
+            {% set badge = '<span class="badge badge-danger">Overdue</span>' %}
+        {% elif apt.scheduled_date <= today + timedelta(days=3) %}
+            {% set row_class = 'row-due-soon' %}
+            {% set badge = '<span class="badge badge-warning">Due Soon</span>' %}
+        {% else %}
+            {% set row_class = '' %}
+            {% set badge = '<span class="badge badge-secondary">Upcoming</span>' %}
+        {% endif %}
+
+        {% if session.get('role') in ['immunisation_officer', 'admin'] and apt.status in ['pending', 'overdue'] %}
+        <tr class="{{ row_class }} apt-row clickable-row"
+            data-apt-id="{{ apt.appointment_id }}"
+            data-vaccine="{{ v.antigen_name if v else '' }}"
+            data-dose="{{ v.dose_number if v else '' }}"
+            data-scheduled="{{ apt.scheduled_date.strftime('%d %b %Y') }}"
+            data-child-id="{{ child.child_id }}"
+            title="Click to record this vaccination">
+        {% else %}
+        <tr class="{{ row_class }}">
+        {% endif %}
+            <td style="font-weight:500;">{{ v.antigen_name if v else '' }}</td>
+            <td>{{ v.dose_number if v else '' }}</td>
+            <td>{{ apt.scheduled_date.strftime('%d %b %Y') }}</td>
+            <td>{{ badge | safe }}</td>
+            <td>{{ apt.completed_date.strftime('%d %b %Y') if apt.completed_date else '' }}</td>
+            {% if session.get('role') in ['data_entry_clerk', 'admin'] %}
+            <td>
+                {% if apt.status in ['pending', 'overdue'] %}
+                <button type="button" class="btn btn-secondary btn-sm"
+                    onclick="openReschedule({{ apt.appointment_id }}, '{{ apt.scheduled_date.isoformat() }}')">
+                    <i data-feather="refresh-cw"></i> Reschedule
+                </button>
+                {% endif %}
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Medical notes -->
+<div class="card">
+    <h3><i data-feather="file-text" class="feather-lg" style="color:var(--teal-500);"></i> Medical Notes</h3>
+    {% if notes %}
+        {% for note in notes %}
+        <div class="note-entry">
+            <div class="note-date">{{ note.note_date.strftime('%d %B %Y') }}</div>
+            <p class="medical-note-text">{{ note.note_text }}</p>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color:var(--slate-400); font-size:.875rem; font-style:italic;">No medical notes on record.</p>
+    {% endif %}
+
+    {% if session.get('role') in ['immunisation_officer', 'admin'] %}
+    <form method="POST" action="{{ url_for('patients.add_note', child_id=child.child_id) }}" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--slate-100);">
+        <div class="form-group">
+            <label for="note_text">New Note</label>
+            <textarea id="note_text" name="note_text" required placeholder="Enter clinical observation or note…"></textarea>
+        </div>
+        <button type="submit" class="btn btn-teal btn-sm">Add Note</button>
+    </form>
+    {% endif %}
+</div>
+
+<!-- Reschedule modal (data entry clerk + admin) -->
+{% if session.get('role') in ['data_entry_clerk', 'admin'] %}
+<div class="modal-backdrop" id="reschedule-modal">
+    <div class="modal" style="max-width:400px;">
+        <div class="modal-header">
+            <h3><i data-feather="refresh-cw"></i> Reschedule Appointment</h3>
+            <button class="modal-close" onclick="closeModal('reschedule-modal')">&times;</button>
+        </div>
+        <form method="POST" id="reschedule-form" action="" class="no-loading">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="reschedule-new-date">New Appointment Date</label>
+                    <input type="date" id="reschedule-new-date" name="new_date" required>
+                </div>
+                <p style="font-size:.76rem; color:var(--slate-400);">
+                    Weekend dates move automatically to Monday. Rescheduling an overdue appointment resets its status to pending.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('reschedule-modal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save New Date</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Vaccination modal (immunisation officer + admin) -->
+{% if session.get('role') in ['immunisation_officer', 'admin'] %}
+<div class="modal-backdrop" id="vaccination-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i data-feather="plus-circle"></i> Record Vaccination</h3>
+            <button class="modal-close" onclick="closeModal('vaccination-modal')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('vaccinations.record_vaccination') }}" id="vaccination-form">
+            <div class="modal-body">
+                <div class="vaccine-summary">
+                    <h4 id="modal-vaccine-name"></h4>
+                    <p id="modal-scheduled-date"></p>
+                </div>
+                <input type="hidden" name="appointment_id" id="modal-appointment-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="modal-date-given">Date Administered</label>
+                        <input type="date" id="modal-date-given" name="date_given" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="modal-batch">Batch Number</label>
+                        <input type="text" id="modal-batch" name="batch_number" required placeholder="e.g. VAX-2025-001">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('vaccination-modal')">Cancel</button>
+                <button type="submit" class="btn btn-success">
+                    <i data-feather="check"></i> Confirm &amp; Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if session.get('role') in ['data_entry_clerk', 'admin'] %}
+<script>
+function openReschedule(aptId, currentDate) {
+    document.getElementById('reschedule-new-date').value = currentDate;
+    document.getElementById('reschedule-form').action = '/appointments/' + aptId + '/reschedule';
+    openModal('reschedule-modal');
+}
+</script>
+{% endif %}
+{% endblock %}

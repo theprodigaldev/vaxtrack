@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Dashboard VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2>Good day, {{ session.get('full_name', 'User').split()[0] }}</h2>
+        <p>{{ session.get('role', '') | replace('_', ' ') | title }}</p>
+    </div>
+</div>
+
+<!-- Live summary stats -->
+<div class="stats-row">
+    <div class="stat-card has-icon teal">
+        <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--teal-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        </div>
+        <div class="stat-text">
+            <div class="number" data-count="{{ stats.total_children }}">{{ stats.total_children }}</div>
+            <div class="label">Enrolled Children</div>
+        </div>
+    </div>
+    <div class="stat-card has-icon emerald">
+        <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--emerald-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+        </div>
+        <div class="stat-text">
+            <div class="number" data-count="{{ stats.total_vaccinations }}">{{ stats.total_vaccinations }}</div>
+            <div class="label">Vaccinations Given</div>
+        </div>
+    </div>
+    <div class="stat-card has-icon amber">
+        <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--amber-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+        </div>
+        <div class="stat-text">
+            <div class="number" data-count="{{ stats.pending_today }}">{{ stats.pending_today }}</div>
+            <div class="label">Due Today</div>
+        </div>
+    </div>
+    <div class="stat-card has-icon rose">
+        <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--rose-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+        </div>
+        <div class="stat-text">
+            <div class="number" data-count="{{ stats.overdue }}">{{ stats.overdue }}</div>
+            <div class="label">Overdue</div>
+        </div>
+    </div>
+</div>
+
+<!-- RFID Scan Feed shown for officer and data entry clerk -->
+{% if role in ['immunisation_officer', 'data_entry_clerk', 'admin'] %}
+<div class="card">
+    <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        RFID Scan Feed
+        <span style="font-size:.73rem; font-weight:400; color:var(--slate-400); margin-left:.25rem;">(auto-updates on card scan)</span>
+    </h3>
+    <div id="scan-result"
+         style="min-height:80px; border:1.5px dashed var(--slate-300); border-radius:var(--radius);
+                padding:1.25rem; text-align:center; color:var(--slate-400); font-size:.845rem; transition:border-color .3s;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+             style="margin-bottom:.4rem; display:block; margin-left:auto; margin-right:auto;">
+            <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        Waiting for card scan&hellip;
+    </div>
+</div>
+{% endif %}
+
+<!-- Role-specific quick actions -->
+{% if role == 'data_entry_clerk' %}
+<div class="card card-accent">
+    <h3>Quick Actions</h3>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <a href="{{ url_for('patients.register_child') }}" class="btn btn-primary">Register Child</a>
+        <a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary">Search Children</a>
+        <a href="{{ url_for('patients.rfid_lookup') }}" class="btn btn-secondary">Card Lookup</a>
+    </div>
+    <p style="font-size:.78rem; color:var(--slate-400); margin-top:.85rem; line-height:1.7;">
+        Scan a child's RFID card on the reader. Their record will appear above automatically.
+        Use <strong>Card Lookup</strong> to manually enter a UID if no reader is connected.
+    </p>
+</div>
+
+{% elif role == 'immunisation_officer' %}
+<div class="card card-accent">
+    <h3>Quick Actions</h3>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <a href="{{ url_for('vaccinations.vaccination_form') }}" class="btn btn-primary">Record Vaccination</a>
+        <a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary">Search Children</a>
+        <a href="{{ url_for('patients.rfid_lookup') }}" class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                 style="vertical-align:middle; margin-right:.3rem;">
+                <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+            </svg>
+            Manual Card Lookup
+        </a>
+    </div>
+</div>
+
+{% elif role == 'admin' %}
+<div class="card card-accent">
+    <h3>Quick Actions</h3>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <a href="{{ url_for('patients.register_child') }}" class="btn btn-primary">Register Child</a>
+        <a href="{{ url_for('auth.list_users') }}" class="btn btn-secondary">Manage Users</a>
+        <a href="{{ url_for('reports.coverage_report') }}" class="btn btn-secondary">Coverage Report</a>
+        <a href="{{ url_for('reports.defaulters_report') }}" class="btn btn-secondary">Defaulters</a>
+        <a href="{{ url_for('auth.audit_log') }}" class="btn btn-secondary">Audit Log</a>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if role in ['immunisation_officer', 'data_entry_clerk', 'admin'] %}
+<script>
+var lastScanHash = null;
+
+async function pollScan() {
+    try {
+        var res = await fetch('/scan/latest', { signal: AbortSignal.timeout(2500) });
+        if (!res.ok) return;
+        var data = await res.json();
+        if (data.status === 'found') {
+            var hash = data.child.child_id + ':' + data.child.first_name;
+            if (hash !== lastScanHash) {
+                lastScanHash = hash;
+                renderScanResult(data);
+            }
+        }
+    } catch(e) {}
+}
+
+function renderScanResult(data) {
+    var c = data.child, s = data.summary;
+    var el = document.getElementById('scan-result');
+    el.style.textAlign = 'left';
+    el.style.color = 'inherit';
+    el.style.borderColor = 'var(--teal-400)';
+    el.style.borderStyle = 'solid';
+
+    el.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;">' +
+            '<div>' +
+                '<div style="font-size:1rem;font-weight:700;color:var(--slate-900);">' + c.first_name + ' ' + c.last_name + '</div>' +
+                '<div style="font-size:.77rem;color:var(--slate-500);margin-top:.1rem;">' +
+                    'DOB: ' + c.date_of_birth + ' &middot; ' + c.gender + ' &middot; Guardian: ' + c.guardian_name +
+                '</div>' +
+            '</div>' +
+            '<a href="/children/' + c.child_id + '" class="btn btn-primary btn-sm">View Record</a>' +
+        '</div>' +
+        '<div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap;">' +
+            _miniStat(s.completed, 'Done', 'var(--emerald-600)') +
+            _miniStat(s.overdue,   'Overdue', 'var(--rose-600)') +
+            _miniStat(s.due_today, 'Today',  'var(--amber-600)') +
+            _miniStat(s.upcoming,  'Upcoming','var(--teal-600)') +
+        '</div>';
+}
+
+function _miniStat(val, label, color) {
+    return '<div style="flex:1;min-width:70px;background:var(--slate-50);border:1px solid var(--slate-200);' +
+           'border-radius:8px;padding:.55rem .8rem;">' +
+               '<div style="font-size:1.2rem;font-weight:700;color:' + color + ';">' + val + '</div>' +
+               '<div style="font-size:.69rem;color:var(--slate-500);font-weight:500;">' + label + '</div>' +
+           '</div>';
+}
+
+setInterval(pollScan, 2500);
+
+{% if role == 'data_entry_clerk' %}
+// Redirect to registration pre-filled with UID when an unregistered card is
+// scanned. Only active on this dashboard page — not on every page — so clerks
+// mid-task elsewhere are never unexpectedly redirected.
+async function pollUnregistered() {
+    try {
+        var res = await fetch('/scan/latest-unregistered', { signal: AbortSignal.timeout(2500) });
+        if (!res.ok) return;
+        var data = await res.json();
+        if (data.status === 'unknown' && data.uid_hex) {
+            window.location.href = '/children?scanned_uid=' + encodeURIComponent(data.uid_hex);
+        }
+    } catch(e) {}
+}
+setInterval(pollUnregistered, 2500);
+{% endif %}
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Coverage Report VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2><i data-feather="bar-chart-2"></i> Antigen Coverage Report</h2>
+    <p>Based on {{ total_children }} enrolled children across all facilities.</p>
+</div>
+<a href="{{ url_for('reports.coverage_report', export='csv') }}" class="btn btn-secondary btn-sm" style="margin-bottom:1.1rem;">
+    <i data-feather="download"></i> Export CSV
+</a>
+
+<div class="card">
+    <div class="table-wrap">
+    <table>
+        <thead><tr><th>Antigen</th><th>Dose</th><th>Vaccinated</th><th>Total</th><th>Coverage</th><th style="min-width:180px;">Progress</th></tr></thead>
+        <tbody>
+        {% for c in coverage %}
+        <tr>
+            <td style="font-weight:600;">{{ c.antigen }}</td>
+            <td><span class="badge badge-secondary">Dose {{ c.dose }}</span></td>
+            <td>{{ c.vaccinated }}</td>
+            <td>{{ c.total }}</td>
+            <td><strong style="color:{% if c.rate >= 80 %}var(--emerald-600){% elif c.rate >= 50 %}var(--amber-600){% else %}var(--rose-600){% endif %};">{{ c.rate }}%</strong></td>
+            <td>
+                <div class="progress">
+                    <div class="progress-bar {% if c.rate >= 80 %}high{% elif c.rate >= 50 %}mid{% else %}low{% endif %}"
+                         data-width="{{ c.rate }}" style="width:{{ c.rate }}%;"></div>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Manage Users VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Staff Users</h2>
+    <a href="{{ url_for('auth.create_user') }}" class="btn btn-primary">&#43; Create User</a>
+</div>
+
+<div class="card">
+    <table>
+        <thead><tr><th>ID</th><th>Username</th><th>Full Name</th><th>Role</th><th>Facility</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+        {% for u in users %}
+        <tr>
+            <td>{{ u.user_id }}</td>
+            <td>{{ u.username }}</td>
+            <td>{{ u.full_name }}</td>
+            <td>{{ u.role | replace('_', ' ') | title }}</td>
+            <td>{{ u.facility.facility_name if u.facility else '' }}</td>
+            <td>
+                {% if u.is_active %}<span class="badge badge-success">Active</span>
+                {% else %}<span class="badge badge-danger">Locked</span>{% endif %}
+            </td>
+            <td style="display:flex; gap:.4rem; flex-wrap:wrap; align-items:center;">
+                <form method="POST" action="{{ url_for('auth.toggle_user', user_id=u.user_id) }}" style="display:inline;" class="no-loading">
+                    {% if u.is_active %}
+                    <button type="submit" class="btn btn-warning btn-sm"
+                        data-confirm="Deactivate {{ u.username }}? They will no longer be able to log in."
+                        data-confirm-title="Deactivate User">Deactivate</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                    {% endif %}
+                </form>
+                <button type="button" class="btn btn-secondary btn-sm"
+                    onclick="openModal('reset-pw-modal-{{ u.user_id }}')">Reset PW</button>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Reset password modals one per user (Gap 16) -->
+{% for u in users %}
+<div class="modal-backdrop" id="reset-pw-modal-{{ u.user_id }}">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header">
+            <h3><i data-feather="key"></i> Reset Password: {{ u.username }}</h3>
+            <button class="modal-close" onclick="closeModal('reset-pw-modal-{{ u.user_id }}')">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('auth.reset_user_password', user_id=u.user_id) }}">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="new_pw_{{ u.user_id }}">New Password</label>
+                    <input type="password" id="new_pw_{{ u.user_id }}" name="new_password" required minlength="8"
+                           placeholder="Minimum 8 characters">
+                </div>
+                <p style="font-size:.8rem; color:var(--slate-400); margin-top:.5rem;">
+                    The user will need to use this password on their next login.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('reset-pw-modal-{{ u.user_id }}')">Cancel</button>
+                <button type="submit" class="btn btn-danger">Reset Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}

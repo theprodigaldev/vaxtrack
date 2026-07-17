@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Defaulters Report VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2><i data-feather="alert-triangle" class="feather-lg" style="color:var(--rose-500);"></i> Defaulters Report</h2>
+        <p>Children with overdue pending appointments.</p>
+    </div>
+    <a href="{{ url_for('reports.defaulters_report', export='csv') }}" class="btn btn-secondary btn-sm">
+        <i data-feather="download"></i> Export CSV
+    </a>
+</div>
+
+<div class="card">
+    {% if defaulters %}
+    <div class="table-wrap">
+    <table>
+        <thead><tr><th>Child ID</th><th>Name</th><th>Guardian</th><th>Phone</th><th>Facility</th><th>Overdue</th><th></th></tr></thead>
+        <tbody>
+        {% for d in defaulters %}
+        <tr>
+            <td><span style="font-size:.78rem; color:var(--slate-400);">#{{ d.child_id }}</span></td>
+            <td style="font-weight:600;">{{ d.first_name }} {{ d.last_name }}</td>
+            <td>{{ d.guardian_name }}</td>
+            <td>{{ d.guardian_phone }}</td>
+            <td>{{ d.facility_name }}</td>
+            <td><span class="badge badge-danger">{{ d.overdue_count }}</span></td>
+            <td><a href="{{ url_for('patients.view_child', child_id=d.child_id) }}" class="btn btn-primary btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div style="text-align:center; padding:2rem;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none"
+             stroke="var(--emerald-400)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+             style="margin-bottom:.75rem;">
+            <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <p style="color:var(--slate-400); font-size:.875rem;">No defaulters found. All children are up to date.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

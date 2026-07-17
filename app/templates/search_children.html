@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Search Children VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Search Children</h2>
+    <p>Search by name, guardian, phone number, or RFID card UID.</p>
+</div>
+
+<div class="card">
+    <form method="GET" action="{{ url_for('patients.search_children') }}" class="no-loading" style="display:flex; gap:.5rem;">
+        <div class="search-bar" style="flex:1;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--slate-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" name="q" value="{{ query }}" placeholder="Name, guardian, phone or RFID UID…" autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+        {% if query %}<a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary">Clear</a>{% endif %}
+    </form>
+</div>
+
+{% if children %}
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+        <h3 style="margin-bottom:0;">Results <span style="font-size:.8rem; font-weight:400; color:var(--slate-400);">({{ children | length }} found)</span></h3>
+        <input type="text" id="table-filter" placeholder="Filter results…" style="width:200px; padding:.4rem .7rem; border:1.5px solid var(--slate-200); border-radius:var(--radius-sm); font-size:.8rem; outline:none;">
+    </div>
+    <div class="table-wrap" data-filterable>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Name</th><th>DOB</th><th>Gender</th><th>Guardian</th><th>Phone</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for c in children %}
+        <tr data-href="{{ url_for('patients.view_child', child_id=c.child_id) }}">
+            <td><span style="font-size:.78rem; color:var(--slate-400);">#{{ c.child_id }}</span></td>
+            <td style="font-weight:600;">{{ c.first_name }} {{ c.last_name }}</td>
+            <td>{{ c.date_of_birth.strftime('%d %b %Y') }}</td>
+            <td>{{ c.gender }}</td>
+            <td>{{ c.guardian_name }}</td>
+            <td>{{ c.guardian_phone }}</td>
+            <td><a href="{{ url_for('patients.view_child', child_id=c.child_id) }}" class="btn btn-primary btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% elif query %}
+<div class="card" style="text-align:center; padding:2.5rem;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none"
+         stroke="var(--slate-300)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="margin-bottom:.75rem;">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <h3 style="color:var(--slate-500); font-weight:500;">No results for "{{ query }}"</h3>
+    <p style="color:var(--slate-400); font-size:.875rem; margin-top:.3rem;">Try a different name, phone number, or RFID UID.</p>
+</div>
+{% else %}
+<div class="card" style="text-align:center; padding:2.5rem;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none"
+         stroke="var(--slate-300)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="margin-bottom:.75rem;">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    <p style="color:var(--slate-400); font-size:.875rem;">Enter a search term above to find children.</p>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Audit Log VaxTrack{% endblock %}
+
+{% block content %}
+<h2>Audit Log</h2>
+
+<div class="card">
+    <form method="GET" action="{{ url_for('auth.audit_log') }}" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end;">
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Table</label>
+            <select name="table" style="padding: 0.4rem;">
+                <option value="">All Tables</option>
+                {% for t in ['users', 'children', 'rfid_tags', 'appointments', 'vaccinations', 'medical_notes', 'sessions', 'notifications'] %}
+                <option value="{{ t }}" {% if table_filter == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>Action</label>
+            <select name="action" style="padding: 0.4rem;">
+                <option value="">All Actions</option>
+                {% for a in ['INSERT', 'UPDATE', 'DELETE'] %}
+                <option value="{{ a }}" {% if action_filter == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>User</label>
+            <select name="user_id" style="padding: 0.4rem;">
+                <option value="">All Users</option>
+                {% for u in all_users %}
+                <option value="{{ u.user_id }}" {% if user_filter == u.user_id|string %}selected{% endif %}>{{ u.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>From</label>
+            <input type="date" name="date_from" value="{{ date_from }}" style="padding: 0.4rem;">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+            <label>To</label>
+            <input type="date" name="date_to" value="{{ date_to }}" style="padding: 0.4rem;">
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="{{ url_for('auth.audit_log') }}" class="btn btn-secondary btn-sm">Clear</a>
+    </form>
+</div>
+
+<div class="card">
+    <table>
+        <thead><tr><th>ID</th><th>Timestamp</th><th>User</th><th>Action</th><th>Table</th><th>Record</th><th>Details</th></tr></thead>
+        <tbody>
+        {% for log in logs.items %}
+        <tr>
+            <td>{{ log.log_id }}</td>
+            <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>{{ log.user.username if log.user else 'System' }}</td>
+            <td><span class="badge badge-{% if log.action_type == 'INSERT' %}success{% elif log.action_type == 'UPDATE' %}warning{% else %}danger{% endif %}">{{ log.action_type }}</span></td>
+            <td>{{ log.table_affected }}</td>
+            <td>{{ log.record_id }}</td>
+            <td style="font-size: 0.8rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">
+                {% if log.old_value %}<strong>Old:</strong> {{ log.old_value }}<br>{% endif %}
+                {% if log.new_value %}<strong>New:</strong> {{ log.new_value }}{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if logs.pages > 1 %}
+    <div class="pagination">
+        {% set pg_args = {'table': table_filter, 'action': action_filter, 'user_id': user_filter, 'date_from': date_from, 'date_to': date_to} %}
+        {% if logs.has_prev %}
+        <a href="{{ url_for('auth.audit_log', page=logs.prev_num, **pg_args) }}">Prev</a>
+        {% endif %}
+        {% for p in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+                <a href="{{ url_for('auth.audit_log', page=p, **pg_args) }}" class="{% if p == logs.page %}active{% endif %}">{{ p }}</a>
+            {% else %}
+                <span>...</span>
+            {% endif %}
+        {% endfor %}
+        {% if logs.has_next %}
+        <a href="{{ url_for('auth.audit_log', page=logs.next_num, **pg_args) }}">Next</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

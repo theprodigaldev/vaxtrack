@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Record Vaccination VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2><i data-feather="plus-circle" class="feather-lg" style="color:var(--teal-500);"></i> Record Vaccination</h2>
+        <p>Select a child and pending appointment to record.</p>
+    </div>
+</div>
+
+{% if not child %}
+<div class="card" style="text-align:center; padding:2rem;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none"
+         stroke="var(--slate-300)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+         style="margin-bottom:.75rem;">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <p style="color:var(--slate-500); margin-bottom:1rem;">Search for a child first, then click "Record Vaccination" from their profile.</p>
+    <a href="{{ url_for('patients.search_children') }}" class="btn btn-primary">Search Children</a>
+</div>
+{% else %}
+<div class="card card-accent">
+    <h3><i data-feather="user"></i> {{ child.first_name }} {{ child.last_name }}</h3>
+    <p style="color:var(--slate-500); font-size:.875rem;">DOB: {{ child.date_of_birth.strftime('%d %B %Y') }} &middot; Guardian: {{ child.guardian_name }}</p>
+</div>
+
+{% if pending_appointments and not appointment %}
+<div class="card">
+    <h3>Select Appointment</h3>
+    <div class="table-wrap">
+    <table>
+        <thead><tr><th>Vaccine</th><th>Dose</th><th>Scheduled</th><th></th></tr></thead>
+        <tbody>
+        {% for apt in pending_appointments %}
+        {% set v = vaccines.get(apt.vaccine_id) %}
+        <tr>
+            <td style="font-weight:500;">{{ v.antigen_name if v else '?' }}</td>
+            <td>{{ v.dose_number if v else '?' }}</td>
+            <td>{{ apt.scheduled_date.strftime('%d %b %Y') }}</td>
+            <td><a href="{{ url_for('vaccinations.vaccination_form', child_id=child.child_id, appointment_id=apt.appointment_id) }}" class="btn btn-success btn-sm">Select</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% elif appointment %}
+<div class="card">
+    <h3>{{ vaccine.antigen_name }}, Dose {{ vaccine.dose_number }}</h3>
+    <p style="color:var(--slate-500); font-size:.875rem; margin-bottom:1rem;">Scheduled: {{ appointment.scheduled_date.strftime('%d %B %Y') }}</p>
+    <form method="POST" action="{{ url_for('vaccinations.record_vaccination') }}">
+        <input type="hidden" name="appointment_id" value="{{ appointment.appointment_id }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="date_given">Date Administered</label>
+                <input type="date" id="date_given" name="date_given" required value="{{ today if today is defined else '' }}">
+            </div>
+            <div class="form-group">
+                <label for="batch_number">Batch Number</label>
+                <input type="text" id="batch_number" name="batch_number" required placeholder="e.g. VAX-2025-001">
+            </div>
+        </div>
+        <div style="display:flex; gap:.5rem;">
+            <button type="submit" class="btn btn-success">
+                <i data-feather="check"></i> Record Vaccination
+            </button>
+            <a href="{{ url_for('patients.view_child', child_id=child.child_id) }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% else %}
+<div class="card" style="text-align:center; padding:1.5rem;">
+    <p style="color:var(--slate-400);">No pending appointments for this child.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}
