@@ -62,19 +62,26 @@ def register_child():
     date_of_birth = request.form.get('date_of_birth', '')
     gender = request.form.get('gender', '')
     guardian_name = request.form.get('guardian_name', '').strip()
-    guardian_phone = request.form.get('guardian_phone', '').strip()
+    # Build the full phone number server-side so no JS hidden-field trick is needed
+    raw_phone = request.form.get('guardian_phone_number', '').strip().lstrip('0')
+    guardian_phone = ('+234' + raw_phone) if raw_phone else ''
     guardian_email = request.form.get('guardian_email', '').strip() or None
     facility_id = request.form.get('facility_id', type=int) or session.get('facility_id')
 
+    def _rerender(error_msg):
+        flash(error_msg, 'danger')
+        return render_template('register_child.html',
+                               facilities=Facility.query.all(),
+                               scanned_uid='',
+                               form_data=request.form)
+
     if not all([first_name, last_name, date_of_birth, gender, guardian_name, guardian_phone]):
-        flash('All required fields must be filled.', 'danger')
-        return redirect(url_for('patients.register_child'))
+        return _rerender('All required fields must be filled.')
 
     try:
         dob = date.fromisoformat(date_of_birth)
     except ValueError:
-        flash('Invalid date format.', 'danger')
-        return redirect(url_for('patients.register_child'))
+        return _rerender('Invalid date of birth.')
 
     child = Child(
         first_name=first_name,

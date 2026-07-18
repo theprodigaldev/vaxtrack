@@ -15,31 +15,35 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="first_name">First Name</label>
-                <input type="text" id="first_name" name="first_name" required>
+                <input type="text" id="first_name" name="first_name" required
+                       value="{{ form_data.get('first_name', '') if form_data else '' }}">
             </div>
             <div class="form-group">
                 <label for="last_name">Last Name</label>
-                <input type="text" id="last_name" name="last_name" required>
+                <input type="text" id="last_name" name="last_name" required
+                       value="{{ form_data.get('last_name', '') if form_data else '' }}">
             </div>
         </div>
         <div class="form-row">
             <div class="form-group">
                 <label for="date_of_birth">Date of Birth</label>
-                <input type="date" id="date_of_birth" name="date_of_birth" required>
+                <input type="date" id="date_of_birth" name="date_of_birth" required
+                       value="{{ form_data.get('date_of_birth', '') if form_data else '' }}">
             </div>
             <div class="form-group">
                 <label for="gender">Gender</label>
                 <select id="gender" name="gender" required>
                     <option value="">-- Select --</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
+                    <option value="Male"   {% if form_data and form_data.get('gender') == 'Male'   %}selected{% endif %}>Male</option>
+                    <option value="Female" {% if form_data and form_data.get('gender') == 'Female' %}selected{% endif %}>Female</option>
                 </select>
             </div>
         </div>
         <div class="form-row">
             <div class="form-group">
                 <label for="guardian_name">Guardian Name</label>
-                <input type="text" id="guardian_name" name="guardian_name" required>
+                <input type="text" id="guardian_name" name="guardian_name" required
+                       value="{{ form_data.get('guardian_name', '') if form_data else '' }}">
             </div>
             <div class="form-group">
                 <label for="guardian_phone_number">Guardian Phone</label>
@@ -47,21 +51,25 @@
                     <span style="padding:.48rem .7rem; background:var(--slate-50); color:var(--slate-600); font-size:.875rem; white-space:nowrap; border-right:1.5px solid var(--slate-200);">+234</span>
                     <input type="tel" id="guardian_phone_number" name="guardian_phone_number" required
                            placeholder="8012345678" maxlength="10"
+                           value="{{ form_data.get('guardian_phone_number', '') if form_data else '' }}"
                            style="border:none; flex:1; padding:.48rem .7rem; font-size:.875rem; outline:none; background:transparent;">
                 </div>
-                <input type="hidden" id="guardian_phone" name="guardian_phone">
             </div>
         </div>
         <div class="form-row">
             <div class="form-group">
                 <label for="guardian_email">Guardian Email <span style="font-size:.75rem; color:var(--slate-400);">(optional)</span></label>
-                <input type="email" id="guardian_email" name="guardian_email">
+                <input type="text" id="guardian_email" name="guardian_email"
+                       value="{{ form_data.get('guardian_email', '') if form_data else '' }}">
             </div>
             <div class="form-group">
                 <label for="facility_id">Facility</label>
                 <select id="facility_id" name="facility_id" required>
                     {% for f in facilities %}
-                    <option value="{{ f.facility_id }}">{{ f.facility_name }}</option>
+                    <option value="{{ f.facility_id }}"
+                            {% if form_data and form_data.get('facility_id')|string == f.facility_id|string %}selected{% endif %}>
+                        {{ f.facility_name }}
+                    </option>
                     {% endfor %}
                 </select>
             </div>
@@ -73,7 +81,7 @@
                     <span style="font-size:.75rem; color:var(--slate-400);">(optional — scan card or type manually)</span>
                 </label>
                 <input type="text" id="uid_hex" name="uid_hex"
-                       value="{{ scanned_uid }}"
+                       value="{{ form_data.get('uid_hex', '') if form_data else scanned_uid }}"
                        placeholder="e.g. A1B2C3D4"
                        data-uppercase
                        autocomplete="off"
@@ -98,20 +106,13 @@
 
 {% block scripts %}
 <script>
-document.querySelector('form').addEventListener('submit', function() {
-    var num = document.getElementById('guardian_phone_number').value.replace(/^0+/, '');
-    document.getElementById('guardian_phone').value = '+234' + num;
-});
-
-// Auto-fill UID field when an unregistered card is scanned while this page is open
 async function pollUnregistered() {
     try {
         var res = await fetch('/scan/latest-unregistered', { signal: AbortSignal.timeout(2500) });
         if (!res.ok) return;
         var data = await res.json();
         if (data.status === 'unknown' && data.uid_hex) {
-            var field = document.getElementById('uid_hex');
-            field.value = data.uid_hex;
+            document.getElementById('uid_hex').value = data.uid_hex;
             document.getElementById('uid-scan-hint').style.display = 'block';
         }
     } catch(e) {}
