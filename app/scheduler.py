@@ -1,5 +1,6 @@
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import create_engine
 from app.notifications import send_reminders
 
 # Module-level reference set by init_scheduler. APScheduler pickles job functions
@@ -28,8 +29,18 @@ def init_scheduler(app):
     # Persist jobs in MySQL so they survive App Service restarts. replace_existing=True
     # on each add_job call updates the stored job definition without creating duplicates,
     # so re-running create_app() after a restart is safe.
+    #
+    # APScheduler creates its own SQLAlchemy engine from the raw URL, so
+    # SQLALCHEMY_ENGINE_OPTIONS (pool_recycle, SSL, etc.) does NOT flow through
+    # automatically. We build an engine here using the same options so the job
+    # store connection behaves identically to Flask-SQLAlchemy's connection.
+    _engine_opts = {'pool_recycle': 280, 'pool_pre_ping': True}
+    _connect_args = app.config.get('SQLALCHEMY_ENGINE_OPTIONS', {}).get('connect_args')
+    if _connect_args:
+        _engine_opts['connect_args'] = _connect_args
+    _scheduler_engine = create_engine(app.config['SQLALCHEMY_DATABASE_URI'], **_engine_opts)
     jobstores = {
-        'default': SQLAlchemyJobStore(url=app.config['SQLALCHEMY_DATABASE_URI'])
+        'default': SQLAlchemyJobStore(engine=_scheduler_engine)
     }
     scheduler = BackgroundScheduler(jobstores=jobstores, daemon=True)
 
