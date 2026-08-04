@@ -21,9 +21,10 @@
     <div class="stat-card teal"><div class="number" data-count="{{ appointments | length }}">{{ appointments | length }}</div><div class="label">Total Doses</div></div>
 </div>
 
-<!-- Patient details -->
+<!-- Child details -->
+{% set has_active_tag = rfid_tags | selectattr('status', 'eq', 'active') | list | length > 0 %}
 <div class="card card-accent">
-    <h3><i data-feather="user" class="feather-lg" style="color:var(--teal-500);"></i> Patient Details</h3>
+    <h3><i data-feather="user" class="feather-lg" style="color:var(--teal-500);"></i> Child Details</h3>
     <div class="detail-grid">
         <div class="detail-item"><div class="detail-label">Date of Birth</div><div class="detail-value">{{ child.date_of_birth.strftime('%d %B %Y') }}</div></div>
         <div class="detail-item"><div class="detail-label">Gender</div><div class="detail-value">{{ child.gender }}</div></div>
@@ -36,9 +37,11 @@
         <a href="{{ url_for('patients.edit_child', child_id=child.child_id) }}" class="btn btn-secondary btn-sm">
             <i data-feather="edit-2"></i> Edit Details
         </a>
+        {% if not has_active_tag %}
         <a href="{{ url_for('patients.assign_rfid', child_id=child.child_id) }}" class="btn btn-secondary btn-sm">
             <i data-feather="credit-card"></i> Assign Card
         </a>
+        {% endif %}
         {% endif %}
         {% if session.get('role') in ['immunisation_officer', 'admin'] %}
         <form method="POST" action="{{ url_for('patients.flag_defaulter', child_id=child.child_id) }}" class="no-loading" style="display:inline;">
