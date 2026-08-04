@@ -56,7 +56,7 @@
     --transition: 150ms cubic-bezier(.4,0,.2,1);
 }
 
-/* ─── Base ─────────────────────────────────────────────── */
+/* Base */
 body {
     font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     background: var(--slate-100);
@@ -70,7 +70,7 @@ h1, h2, h3, h4, h5, h6 {
 a { color: var(--teal-600); text-decoration: none; }
 a:hover { color: var(--teal-700); }
 
-/* ─── Layout ────────────────────────────────────────────── */
+/* Layout */
 .wrapper { display: flex; min-height: 100vh; }
 .content-shell {
     flex: 1;
@@ -82,7 +82,7 @@ a:hover { color: var(--teal-700); }
 }
 body.sidebar-collapsed .content-shell { margin-left: 0; }
 
-/* ─── Sidebar toggle button ──────────────────────────────── */
+/* Sidebar toggle button */
 .sidebar-toggle-btn {
     background: none;
     border: none;
@@ -120,7 +120,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
 }
 #sidebar-backdrop.show { display: block; }
 
-/* ─── Top bar ────────────────────────────────────────────── */
+/* Top bar */
 .topbar {
     position: sticky;
     top: 0;
@@ -170,7 +170,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
     font-weight: 400;
 }
 
-/* ─── Feather SVG icons ──────────────────────────────────── */
+/* Feather SVG icons */
 .feather {
     width: 15px;
     height: 15px;
@@ -187,7 +187,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
 .feather-lg { width: 18px; height: 18px; }
 .feather-xl { width: 22px; height: 22px; }
 
-/* ─── Sidebar ───────────────────────────────────────────── */
+/* Sidebar */
 .sidebar {
     width: var(--sidebar-w);
     background: var(--sidebar-bg);
@@ -324,7 +324,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
 }
 .btn-logout:hover { background: rgba(255,255,255,.12); color: #fff; }
 
-/* ─── Main content ──────────────────────────────────────── */
+/* Main content */
 .main-content {
     flex: 1;
     padding: 1.75rem 2rem;
@@ -352,7 +352,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
     margin-top: .2rem;
 }
 
-/* ─── Cards ─────────────────────────────────────────────── */
+/* Cards */
 .card {
     background: #fff;
     border-radius: var(--radius-lg);
@@ -372,7 +372,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
 }
 .card-accent { border-color: rgba(20,184,166,.2); background: #fafffe; }
 
-/* ─── Stat cards ─────────────────────────────────────────── */
+/* Stat cards */
 .stats-row { display: flex; gap: .875rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
 
 .stat-card {
@@ -428,7 +428,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
 .stat-card.has-icon.amber   .stat-icon { background: #fffbeb; }
 .stat-card.has-icon .stat-text .number { font-size: 1.5rem; }
 
-/* ─── Tables ─────────────────────────────────────────────── */
+/* Tables */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; }
 thead tr { border-bottom: 1.5px solid var(--slate-200); }
@@ -462,7 +462,7 @@ tr.row-due-soon { background: #fffbeb; }
 tr.row-due-soon:hover { background: #fef3c7; }
 tr.row-completed { opacity: .6; }
 
-/* ─── Forms ──────────────────────────────────────────────── */
+/* Forms */
 .form-group { margin-bottom: 1rem; }
 .form-group label {
     display: block;
@@ -526,7 +526,7 @@ tr.row-completed { opacity: .6; }
 .form-row { display: flex; gap: 1rem; flex-wrap: wrap; }
 .form-row .form-group { flex: 1; min-width: 180px; }
 
-/* ─── Buttons ─────────────────────────────────────────────── */
+/* Buttons */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -574,7 +574,7 @@ tr.row-completed { opacity: .6; }
 .btn-sm { padding: .28rem .65rem; font-size: .76rem; }
 .btn-icon { padding: .38rem; border-radius: var(--radius-sm); }
 
-/* ─── Alerts ──────────────────────────────────────────────── */
+/* Alerts */
 .alert {
     padding: .72rem 1rem;
     border-radius: var(--radius);
@@ -604,7 +604,7 @@ tr.row-completed { opacity: .6; }
 }
 .alert-close:hover { opacity: 1; }
 
-/* ─── Badges ──────────────────────────────────────────────── */
+/* Badges */
 .badge {
     display: inline-flex;
     align-items: center;
@@ -624,7 +624,7 @@ tr.row-completed { opacity: .6; }
 .badge-teal     { background: #ccfbf1; color: #0f766e; }
 .badge-amber    { background: #fef3c7; color: #92400e; }
 
-/* ─── Pagination ──────────────────────────────────────────── */
+/* Pagination */
 .pagination { display: flex; gap: .3rem; margin-top: 1rem; flex-wrap: wrap; }
 .pagination a, .pagination span {
     padding: .32rem .62rem;
@@ -639,7 +639,7 @@ tr.row-completed { opacity: .6; }
 .pagination a:hover { border-color: var(--teal-400); color: var(--teal-600); }
 .pagination .active { background: var(--teal-600); color: #fff; border-color: var(--teal-600); }
 
-/* ─── Search bar ──────────────────────────────────────────── */
+/* Search bar */
 .search-bar {
     display: flex;
     gap: .5rem;
@@ -666,7 +666,7 @@ tr.row-completed { opacity: .6; }
     padding: 0 !important;
 }
 
-/* ─── Modal ───────────────────────────────────────────────── */
+/* Modal */
 .modal-backdrop {
     display: none;
     position: fixed;
@@ -724,7 +724,7 @@ tr.row-completed { opacity: .6; }
 .vaccine-summary h4 { font-size: .93rem; color: var(--teal-700); font-weight: 700; }
 .vaccine-summary p  { font-size: .77rem; color: var(--slate-500); margin-top: .2rem; }
 
-/* ─── Progress bar ────────────────────────────────────────── */
+/* Progress bar */
 .progress { height: 6px; background: var(--slate-200); border-radius: 99px; overflow: hidden; }
 .progress-bar {
     height: 100%;
@@ -736,7 +736,7 @@ tr.row-completed { opacity: .6; }
 .progress-bar.mid  { background: var(--amber-500); }
 .progress-bar.high { background: var(--emerald-500); }
 
-/* ─── Medical notes ───────────────────────────────────────── */
+/* Medical notes */
 .medical-note-text {
     font-family: 'Source Sans 3', 'Open Sans', sans-serif;
     font-size: .9rem;
@@ -758,7 +758,7 @@ tr.row-completed { opacity: .6; }
     margin-bottom: .2rem;
 }
 
-/* ─── UID display ─────────────────────────────────────────── */
+/* UID display */
 .uid-display {
     font-family: 'Courier New', monospace;
     font-size: 1rem;
@@ -772,7 +772,7 @@ tr.row-completed { opacity: .6; }
     display: inline-block;
 }
 
-/* ─── Toast ───────────────────────────────────────────────── */
+/* Toast */
 #toast-container {
     position: fixed;
     bottom: 1.5rem;
@@ -801,7 +801,7 @@ tr.row-completed { opacity: .6; }
 .toast.toast-success { border-left: 2px solid var(--emerald-500); }
 .toast.toast-error   { border-left: 2px solid var(--rose-500); }
 
-/* ─── Loading overlay ─────────────────────────────────────── */
+/* Loading overlay */
 .loading-overlay {
     display: none;
     position: fixed;
@@ -821,13 +821,13 @@ tr.row-completed { opacity: .6; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ─── Confirm dialog ──────────────────────────────────────── */
+/* Confirm dialog */
 .confirm-dialog .modal { max-width: 360px; }
 .confirm-dialog .modal-body { text-align: center; padding: 1.5rem 1.4rem .5rem; }
 .confirm-dialog .modal-body p { color: var(--slate-500); margin-top: .4rem; font-size: .875rem; }
 .confirm-icon { font-size: 2.2rem; margin-bottom: .4rem; }
 
-/* ─── Inline detail grid ──────────────────────────────────── */
+/* Inline detail grid */
 .detail-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -847,7 +847,7 @@ tr.row-completed { opacity: .6; }
     color: var(--slate-800);
 }
 
-/* ─── Responsive ──────────────────────────────────────────── */
+/* Responsive */
 @media (max-width: 768px) {
     .content-shell { margin-left: 0 !important; }
     .topbar { padding: 0 1rem; }

@@ -16,13 +16,6 @@ def _run_reminders(job_type):
 
 
 def init_scheduler(app):
-    """Initialize APScheduler with 3 notification jobs (WAT = UTC+1).
-
-    IMPORTANT: This app must run as a SINGLE App Service instance. If scaled out
-    to multiple instances, each would independently fire the same reminder jobs,
-    causing duplicate SMS/email sends. Move the scheduler to a separate process
-    (e.g., Azure Container App or a dedicated worker) before enabling scale-out.
-    """
     global _app
     _app = app
 
