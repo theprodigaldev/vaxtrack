@@ -45,8 +45,11 @@ def send_sms(phone, message, app_config):
         return {'status': 'failed', 'error': str(e)}
 
 
-def send_email(to_email, subject, body, app_config):
-    """Send email via Azure Communication Services REST API."""
+def send_email(to_email, subject, body, app_config, html_body=None):
+    """Send email via Azure Communication Services REST API.
+    When html_body is provided, both plainText and html are sent in the same
+    payload so clients that prefer either format render correctly.
+    """
     connection_string = app_config['ACS_CONNECTION_STRING']
     sender = app_config['MAIL_SENDER']
 
@@ -68,12 +71,16 @@ def send_email(to_email, subject, body, app_config):
 
     url = f"{endpoint}/emails:send?api-version=2023-03-31"
 
+    content = {
+        "subject": subject,
+        "plainText": body
+    }
+    if html_body:
+        content["html"] = html_body
+
     email_payload = {
         "senderAddress": sender,
-        "content": {
-            "subject": subject,
-            "plainText": body
-        },
+        "content": content,
         "recipients": {
             "to": [{"address": to_email}]
         }
@@ -109,6 +116,76 @@ def send_email(to_email, subject, body, app_config):
         return {'status': 'failed', 'error': str(e)}
 
 
+_HEADING_BY_TYPE = {
+    'evening_before': 'Vaccination Reminder — Tomorrow',
+    'morning_of': 'Vaccination Reminder — Today',
+    'noon_followup': 'Vaccination Reminder — Follow-up',
+}
+
+
+def build_email_html(child_name, vaccine, date_str, facility_name, message_type, base_url):
+    """Build a self-contained branded HTML email body. Inline CSS only —
+    email clients strip <link>/<style> stylesheets, so nothing external is
+    relied upon besides the logo image.
+    """
+    heading = _HEADING_BY_TYPE.get(message_type, 'Vaccination Reminder')
+    logo_url = f"{base_url.rstrip('/')}/static/vaxtrack-logo.png"
+
+    return f"""\
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0; padding:0; background:#f4f4f4; font-family:Arial, Helvetica, sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; max-width:600px; width:100%;">
+          <tr>
+            <td style="background:#353334; padding:24px 32px; text-align:center;">
+              <img src="{logo_url}" alt="VaxTrack" height="36" style="height:36px; border:0; display:inline-block;">
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px; color:#333333;">
+              <h1 style="margin:0 0 16px; font-size:20px; color:#333333;">{heading}</h1>
+              <p style="margin:0 0 20px; font-size:15px; line-height:1.6;">
+                Dear Guardian,<br><br>
+                This is a reminder regarding <strong>{child_name}</strong>'s upcoming vaccination appointment.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                     style="border:2px solid #2DD4BF; border-radius:6px; margin:0 0 20px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <div style="font-size:13px; color:#666666; text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;">Vaccine</div>
+                    <div style="font-size:16px; font-weight:bold; color:#333333; margin-bottom:12px;">{vaccine}</div>
+                    <div style="font-size:13px; color:#666666; text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;">Date</div>
+                    <div style="font-size:16px; font-weight:bold; color:#333333;">{date_str}</div>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:0; font-size:15px; line-height:1.6;">
+                Please attend at <strong>{facility_name}</strong>. Bring the child's RFID card if one has
+                already been issued.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px; background:#fafafa; border-top:1px solid #eeeeee;">
+              <p style="margin:0; font-size:12px; color:#888888; line-height:1.6;">
+                {facility_name}<br>
+                This is an automated message from VaxTrack — please do not reply directly to this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+
 def _log_notification(action, details):
     """Write notification delivery status to audit log."""
     log = AuditLog(
@@ -141,6 +218,7 @@ def send_reminders(app, job_type):
                     "tomorrow ({date}) at {facility}. Please attend on time."
                 )
                 subject = "Vaccination Reminder - Tomorrow"
+                send_sms_flag = False
                 send_email_flag = True
             elif job_type == 'morning_of':
                 target_date = today
@@ -149,16 +227,18 @@ def send_reminders(app, job_type):
                     "at {facility}. Please bring the child and RFID card."
                 )
                 subject = "Vaccination Reminder - Today"
+                send_sms_flag = True
                 send_email_flag = True
-            else:  # noon_followup SMS only per spec
+            else:  # noon_followup
                 target_date = today
                 msg_template = (
                     "Hi, this is a follow-up. {child_name}'s {vaccine} vaccination was "
                     "scheduled for today ({date}). If you haven't visited {facility} yet, "
                     "please come in or call the facility."
                 )
-                subject = None
-                send_email_flag = False
+                subject = "Vaccination Reminder - Follow-up"
+                send_sms_flag = False
+                send_email_flag = True
 
             appointments = (
                 Appointment.query
@@ -182,14 +262,24 @@ def send_reminders(app, job_type):
                         facility=facility.facility_name
                     )
 
-                    # Always send SMS
-                    sms_result = send_sms(child.guardian_phone, message, config)
-
-                    # Email only for evening and morning jobs
-                    if send_email_flag:
-                        email_result = send_email(child.guardian_email, subject, message, config)
+                    if send_sms_flag:
+                        sms_result = send_sms(child.guardian_phone, message, config)
                     else:
-                        email_result = {'status': 'skipped', 'reason': 'noon job SMS only'}
+                        sms_result = {'status': 'skipped', 'reason': f'{job_type} is email-only'}
+
+                    if send_email_flag:
+                        html_body = build_email_html(
+                            child_name=f"{child.first_name} {child.last_name}",
+                            vaccine=f"{vaccine.antigen_name} (Dose {vaccine.dose_number})",
+                            date_str=target_date.strftime('%A, %d %B %Y'),
+                            facility_name=facility.facility_name,
+                            message_type=job_type,
+                            base_url=config.get('APP_BASE_URL', '')
+                        )
+                        email_result = send_email(child.guardian_email, subject, message, config,
+                                                   html_body=html_body)
+                    else:
+                        email_result = {'status': 'skipped', 'reason': f'{job_type} is SMS-only'}
 
                     _log_notification('INSERT', {
                         'job_type': job_type,

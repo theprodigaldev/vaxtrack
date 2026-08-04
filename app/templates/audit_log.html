@@ -4,6 +4,29 @@
 {% block content %}
 <h2>Audit Log</h2>
 
+<div class="card" style="border: 2px dashed var(--amber-500); background: #fffbf0;">
+    <h3 style="margin-top:0;">Manual Trigger — for testing only</h3>
+    <p style="font-size:.8rem; color:var(--slate-500); margin-bottom:.9rem; line-height:1.6;">
+        This sends real notifications to guardians of any matching appointments — not a sandboxed test.
+        It runs the same job used by the scheduler against today's/tomorrow's pending appointments.
+        Each job only sends the channel(s) shown on its button.
+    </p>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <form method="POST" action="{{ url_for('auth.trigger_notification') }}" style="margin:0;">
+            <input type="hidden" name="job_type" value="evening_before">
+            <button type="submit" class="btn btn-warning btn-sm">Trigger Evening Before (Email only)</button>
+        </form>
+        <form method="POST" action="{{ url_for('auth.trigger_notification') }}" style="margin:0;">
+            <input type="hidden" name="job_type" value="morning_of">
+            <button type="submit" class="btn btn-warning btn-sm">Trigger Morning Of (SMS + Email)</button>
+        </form>
+        <form method="POST" action="{{ url_for('auth.trigger_notification') }}" style="margin:0;">
+            <input type="hidden" name="job_type" value="noon_followup">
+            <button type="submit" class="btn btn-warning btn-sm">Trigger Noon Follow-up (Email only)</button>
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <form method="GET" action="{{ url_for('auth.audit_log') }}" style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: flex-end;">
         <div class="form-group" style="margin-bottom: 0;">

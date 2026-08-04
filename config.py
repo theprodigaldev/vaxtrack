@@ -49,5 +49,10 @@ class Config:
     ACS_CONNECTION_STRING = os.environ.get('ACS_CONNECTION_STRING', '')
     MAIL_SENDER = os.environ.get('MAIL_SENDER', '')
 
+    # Base URL of this app's own deployment, used to build absolute asset URLs
+    # (e.g. the logo embedded in HTML emails) from notifications.py, which runs
+    # from a background APScheduler thread with no Flask request context.
+    APP_BASE_URL = os.environ.get('APP_BASE_URL', '')
+
     # ESP32 Hardware Token
     ESP32_AUTH_TOKEN = os.environ.get('ESP32_AUTH_TOKEN', '')

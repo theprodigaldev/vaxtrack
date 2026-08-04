@@ -2,7 +2,7 @@ from functools import wraps
 from datetime import datetime, date
 
 import bcrypt
-from flask import Blueprint, request, session, redirect, url_for, render_template, flash, jsonify
+from flask import Blueprint, current_app, request, session, redirect, url_for, render_template, flash, jsonify
 
 from app import db
 from app.models import User, AuditLog
@@ -332,3 +332,21 @@ def audit_log():
                            table_filter=table_filter, action_filter=action_filter,
                            user_filter=user_filter, date_from=date_from_str,
                            date_to=date_to_str, all_users=all_users)
+
+
+# ---------------------------------------------------------------------------
+# Admin: manual notification trigger (testing tool)
+# ---------------------------------------------------------------------------
+@auth_bp.route('/admin/trigger-notification', methods=['POST'])
+@require_role('admin')
+def trigger_notification():
+    from app.notifications import send_reminders
+
+    job_type = request.form.get('job_type', '')
+    if job_type not in ('evening_before', 'morning_of', 'noon_followup'):
+        flash('Invalid job type.', 'danger')
+        return redirect(url_for('auth.audit_log'))
+
+    send_reminders(current_app._get_current_object(), job_type)
+    flash(f'Triggered "{job_type}" job — check Audit Log for delivery results.', 'success')
+    return redirect(url_for('auth.audit_log'))
