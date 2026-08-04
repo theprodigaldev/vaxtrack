@@ -9,7 +9,7 @@ from app.auth import login_required, require_role
 
 rfid_bp = Blueprint('rfid', __name__)
 
-# Per-facility scan buffer — keyed by facility_id so multi-facility works
+# Per-facility scan buffer, keyed by facility_id so multi-facility works
 _scan_lock = threading.Lock()
 _latest_scans = {}  # {facility_id: {'data': dict, 'acked': bool}}
 
@@ -17,6 +17,59 @@ _latest_scans = {}  # {facility_id: {'data': dict, 'acked': bool}}
 # when the UID has no matching tag, so this is not facility-scoped.
 # Guarded by the same _scan_lock for simplicity.
 _latest_unregistered_scan = {'data': None, 'acked': True}
+
+
+def build_lcd_payload(status, overdue=None, due_today=None, due_this_week=None,
+                       upcoming=None, completed=None, uid_hex=None):
+    """Pre-compute the LCD state/line1/line2/led/buzzer contract so the ESP32
+    firmware only has to switch on `lcd.state` and print two lines, with no
+    business logic on the microcontroller. Pure function (no Flask/DB access)
+    so it's directly unit-testable. See TC04/TC05/TC09 in the functional test
+    matrix for the state assignments implemented here.
+    """
+    overdue = overdue or []
+    due_today = due_today or []
+    due_this_week = due_this_week or []
+    upcoming = upcoming or []
+    completed = completed or []
+
+    if status == 'unknown':
+        return {
+            'state': 7, 'line1': 'Card Not Found', 'line2': 'Register Child',
+            'led': 'red_solid', 'buzzer': '2_beeps'
+        }
+
+    if status == 'deactivated':
+        return {
+            'state': 8, 'line1': 'Card Deactivated', 'line2': 'See Admin',
+            'led': 'red_flashing', 'buzzer': '3_beeps'
+        }
+
+    # status == 'found'
+    if len(overdue) > 1:
+        return {
+            'state': 5, 'line1': f'{len(overdue)} Missed Vaccines',
+            'line2': 'See Nurse', 'led': 'red_flashing', 'buzzer': '3_rapid_beeps'
+        }
+
+    if len(overdue) == 1:
+        return {
+            'state': 4, 'line1': f'MISSED: {overdue[0]["vaccine"]}',
+            'line2': 'Give Now!', 'led': 'red_solid', 'buzzer': '2_short_beeps'
+        }
+
+    if not due_today and not due_this_week and not upcoming:
+        return {
+            'state': 6, 'line1': 'All Vaccines Done', 'line2': 'EPI Complete!',
+            'led': 'green_flash_3x', 'buzzer': '3_quick_beeps'
+        }
+
+    next_pending = due_today[0] if due_today else due_this_week[0] if due_this_week else upcoming[0]
+    return {
+        'state': 3, 'line1': f'Next: {next_pending["vaccine"]}',
+        'line2': f'Due: {next_pending["scheduled_date"]}',
+        'led': 'green_solid', 'buzzer': '1_beep'
+    }
 
 
 @rfid_bp.route('/scan', methods=['POST'])
@@ -38,9 +91,9 @@ def scan():
     tag = RFIDTag.query.filter_by(uid_hex=uid).first()
 
     if not tag:
-        # No child is linked to this UID — push to the global unregistered buffer
+        # No child is linked to this UID, so push to the global unregistered buffer
         # so a clerk on the dashboard or registration page can capture it.
-        payload = {'status': 'unknown', 'uid_hex': uid}
+        payload = {'status': 'unknown', 'uid_hex': uid, 'lcd': build_lcd_payload('unknown', uid_hex=uid)}
         with _scan_lock:
             _latest_unregistered_scan['data'] = payload
             _latest_unregistered_scan['acked'] = False
@@ -54,6 +107,7 @@ def scan():
             'status': 'deactivated',
             'uid_hex': uid,
             'child_id': child.child_id if child else None,
+            'lcd': build_lcd_payload('deactivated', uid_hex=uid),
         }
         if child:
             with _scan_lock:
@@ -131,10 +185,19 @@ def scan():
             'overdue': len(overdue),
             'due_today': len(due_today),
             'upcoming': len(upcoming) + len(due_this_week)
-        }
+        },
+        'lcd': build_lcd_payload(
+            'found',
+            overdue=overdue,
+            due_today=due_today,
+            due_this_week=due_this_week,
+            upcoming=upcoming,
+            completed=completed,
+            uid_hex=uid
+        )
     }
 
-    # Push into scan buffer — dashboard JS will pick this up within 2-3 seconds
+    # Push into scan buffer: dashboard JS will pick this up within 2-3 seconds
     with _scan_lock:
         _latest_scans[child.facility_id] = {
             'data': response_payload,
@@ -165,7 +228,7 @@ def scan_latest():
 def scan_latest_unregistered():
     """Global polling endpoint for unknown (unregistered) RFID scans.
     Returns the latest unacknowledged unknown-UID scan and marks it acknowledged.
-    Not scoped by facility — any authorised clerk sees the same pending scan,
+    Not scoped by facility: any authorised clerk sees the same pending scan,
     since there is no child record to derive a facility from.
     """
     with _scan_lock:

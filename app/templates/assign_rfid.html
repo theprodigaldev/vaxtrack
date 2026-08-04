@@ -44,7 +44,7 @@
 {% block scripts %}
 <script>
 // Auto-fill UID field when an unregistered card is scanned while on this page.
-// Does NOT redirect — the clerk is already targeting a specific known child.
+// Does NOT redirect, since the clerk is already targeting a specific known child.
 async function pollUnregistered() {
     try {
         var res = await fetch('/scan/latest-unregistered', { signal: AbortSignal.timeout(2500) });

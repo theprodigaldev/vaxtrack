@@ -348,5 +348,5 @@ def trigger_notification():
         return redirect(url_for('auth.audit_log'))
 
     send_reminders(current_app._get_current_object(), job_type)
-    flash(f'Triggered "{job_type}" job — check Audit Log for delivery results.', 'success')
+    flash(f'Triggered "{job_type}" job. Check Audit Log for delivery results.', 'success')
     return redirect(url_for('auth.audit_log'))

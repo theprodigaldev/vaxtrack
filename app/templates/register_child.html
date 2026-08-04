@@ -78,7 +78,7 @@
             <div class="form-group">
                 <label for="uid_hex">
                     RFID Card UID
-                    <span style="font-size:.75rem; color:var(--slate-400);">(optional — scan card or type manually)</span>
+                    <span style="font-size:.75rem; color:var(--slate-400);">(optional: scan card or type manually)</span>
                 </label>
                 <input type="text" id="uid_hex" name="uid_hex"
                        value="{{ form_data.get('uid_hex', '') if form_data else scanned_uid }}"

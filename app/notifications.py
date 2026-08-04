@@ -117,19 +117,63 @@ def send_email(to_email, subject, body, app_config, html_body=None):
 
 
 _HEADING_BY_TYPE = {
-    'evening_before': 'Vaccination Reminder — Tomorrow',
-    'morning_of': 'Vaccination Reminder — Today',
-    'noon_followup': 'Vaccination Reminder — Follow-up',
+    'evening_before': 'Vaccination Reminder - Tomorrow',
+    'morning_of': 'Vaccination Reminder - Today',
+    'noon_followup': 'Vaccination Reminder - Follow-up',
 }
 
 
-def build_email_html(child_name, vaccine, date_str, facility_name, message_type, base_url):
-    """Build a self-contained branded HTML email body. Inline CSS only —
+def build_email_body_text(guardian_name, child_name, vaccine, date_str):
+    """Plain-text email body shared by all three notification jobs.
+    The only per-job difference is the subject/heading (see _HEADING_BY_TYPE) -
+    this is deliberately separate from the SMS msg_template in send_reminders,
+    which keeps its own distinct wording per job.
+    """
+    return (
+        f"Dear {guardian_name},\n\n"
+        f"This is a friendly reminder that {child_name} is scheduled for the "
+        "following vaccination appointment.\n\n"
+        f"Vaccine: {vaccine}\n"
+        f"Appointment Date: {date_str}\n\n"
+        "Please attend the appointment as scheduled and bring your child's "
+        "card for identification and record updates.\n\n"
+        "Thank you."
+    )
+
+
+def _resolve_logo_url(base_url):
+    """Build an absolute logo URL from APP_BASE_URL, or None if it's unset/
+    blank so callers can fall back to a text wordmark instead of a broken
+    <img>. Also guards against a bare hostname with no scheme.
+    """
+    if not base_url or not base_url.strip():
+        return None
+    base_url = base_url.strip().rstrip('/')
+    if not base_url:
+        return None
+    if not base_url.startswith(('http://', 'https://')):
+        base_url = f"https://{base_url}"
+    return f"{base_url}/static/vaxtrack-logo.png"
+
+
+def build_email_html(guardian_name, child_name, vaccine, date_str, facility_name, message_type, base_url):
+    """Build a self-contained branded HTML email body. Inline CSS only:
     email clients strip <link>/<style> stylesheets, so nothing external is
-    relied upon besides the logo image.
+    relied upon besides the logo image (and even that has a text fallback).
     """
     heading = _HEADING_BY_TYPE.get(message_type, 'Vaccination Reminder')
-    logo_url = f"{base_url.rstrip('/')}/static/vaxtrack-logo.png"
+    logo_url = _resolve_logo_url(base_url)
+
+    if logo_url:
+        header_html = (
+            f'<img src="{logo_url}" alt="VaxTrack" height="36" '
+            'style="height:36px; border:0; display:inline-block;">'
+        )
+    else:
+        header_html = (
+            '<span style="font-size:22px; font-weight:bold; color:#2DD4BF; '
+            'letter-spacing:.02em; font-family:Arial, Helvetica, sans-serif;">VaxTrack</span>'
+        )
 
     return f"""\
 <!DOCTYPE html>
@@ -142,15 +186,16 @@ def build_email_html(child_name, vaccine, date_str, facility_name, message_type,
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; max-width:600px; width:100%;">
           <tr>
             <td style="background:#353334; padding:24px 32px; text-align:center;">
-              <img src="{logo_url}" alt="VaxTrack" height="36" style="height:36px; border:0; display:inline-block;">
+              {header_html}
             </td>
           </tr>
           <tr>
             <td style="padding:32px; color:#333333;">
               <h1 style="margin:0 0 16px; font-size:20px; color:#333333;">{heading}</h1>
               <p style="margin:0 0 20px; font-size:15px; line-height:1.6;">
-                Dear Guardian,<br><br>
-                This is a reminder regarding <strong>{child_name}</strong>'s upcoming vaccination appointment.
+                Dear {guardian_name},<br><br>
+                This is a friendly reminder that <strong>{child_name}</strong> is scheduled for the
+                following vaccination appointment.
               </p>
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                      style="border:2px solid #2DD4BF; border-radius:6px; margin:0 0 20px;">
@@ -158,14 +203,17 @@ def build_email_html(child_name, vaccine, date_str, facility_name, message_type,
                   <td style="padding:16px 20px;">
                     <div style="font-size:13px; color:#666666; text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;">Vaccine</div>
                     <div style="font-size:16px; font-weight:bold; color:#333333; margin-bottom:12px;">{vaccine}</div>
-                    <div style="font-size:13px; color:#666666; text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;">Date</div>
+                    <div style="font-size:13px; color:#666666; text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px;">Appointment Date</div>
                     <div style="font-size:16px; font-weight:bold; color:#333333;">{date_str}</div>
                   </td>
                 </tr>
               </table>
+              <p style="margin:0 0 16px; font-size:15px; line-height:1.6;">
+                Please attend the appointment as scheduled and bring your child's card for
+                identification and record updates.
+              </p>
               <p style="margin:0; font-size:15px; line-height:1.6;">
-                Please attend at <strong>{facility_name}</strong>. Bring the child's RFID card if one has
-                already been issued.
+                Thank you.
               </p>
             </td>
           </tr>
@@ -173,7 +221,7 @@ def build_email_html(child_name, vaccine, date_str, facility_name, message_type,
             <td style="padding:20px 32px; background:#fafafa; border-top:1px solid #eeeeee;">
               <p style="margin:0; font-size:12px; color:#888888; line-height:1.6;">
                 {facility_name}<br>
-                This is an automated message from VaxTrack — please do not reply directly to this email.
+                This is an automated message from VaxTrack. Please do not reply directly to this email.
               </p>
             </td>
           </tr>
@@ -268,15 +316,26 @@ def send_reminders(app, job_type):
                         sms_result = {'status': 'skipped', 'reason': f'{job_type} is email-only'}
 
                     if send_email_flag:
+                        child_full_name = f"{child.first_name} {child.last_name}"
+                        vaccine_str = f"{vaccine.antigen_name} (Dose {vaccine.dose_number})"
+                        date_display = target_date.strftime('%A, %d %B %Y')
+
+                        email_plain_body = build_email_body_text(
+                            guardian_name=child.guardian_name,
+                            child_name=child_full_name,
+                            vaccine=vaccine_str,
+                            date_str=date_display
+                        )
                         html_body = build_email_html(
-                            child_name=f"{child.first_name} {child.last_name}",
-                            vaccine=f"{vaccine.antigen_name} (Dose {vaccine.dose_number})",
-                            date_str=target_date.strftime('%A, %d %B %Y'),
+                            guardian_name=child.guardian_name,
+                            child_name=child_full_name,
+                            vaccine=vaccine_str,
+                            date_str=date_display,
                             facility_name=facility.facility_name,
                             message_type=job_type,
                             base_url=config.get('APP_BASE_URL', '')
                         )
-                        email_result = send_email(child.guardian_email, subject, message, config,
+                        email_result = send_email(child.guardian_email, subject, email_plain_body, config,
                                                    html_body=html_body)
                     else:
                         email_result = {'status': 'skipped', 'reason': f'{job_type} is SMS-only'}

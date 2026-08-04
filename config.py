@@ -8,7 +8,7 @@ class Config:
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-change-me')
 
-    # Sessions — SQLAlchemy-backed so sessions survive restarts and work across
+    # Sessions: SQLAlchemy-backed so sessions survive restarts and work across
     # multiple instances (consistent with the MySQL database already in use).
     # SESSION_SQLALCHEMY is set programmatically in create_app() after the db
     # object is initialised, since it must be an object reference, not a string.

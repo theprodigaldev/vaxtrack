@@ -195,7 +195,7 @@ setInterval(pollScan, 2500);
 
 {% if role == 'data_entry_clerk' %}
 // Redirect to registration pre-filled with UID when an unregistered card is
-// scanned. Only active on this dashboard page — not on every page — so clerks
+// scanned. Only active on this dashboard page, not on every page, so clerks
 // mid-task elsewhere are never unexpectedly redirected.
 async function pollUnregistered() {
     try {
