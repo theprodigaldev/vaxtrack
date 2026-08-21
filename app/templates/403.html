@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Access Denied VaxTrack{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:480px; margin:3rem auto; text-align:center;">
+    <h2 style="margin-top:0;">403 - Access Denied</h2>
+    <div class="alert alert-danger" style="text-align:left;">
+        You don't have permission to view this page.
+    </div>
+    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+</div>
+{% endblock %}

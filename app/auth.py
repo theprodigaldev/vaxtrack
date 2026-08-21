@@ -22,8 +22,7 @@ def require_role(*roles):
                 flash('Please log in to access this page.', 'warning')
                 return redirect(url_for('auth.login'))
             if session.get('role') not in roles:
-                flash('You do not have permission to access this page.', 'danger')
-                return redirect(url_for('auth.dashboard'))
+                return render_template('403.html'), 403
             return f(*args, **kwargs)
         return decorated_function
     return decorator

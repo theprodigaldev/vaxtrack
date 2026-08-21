@@ -274,10 +274,10 @@ def assign_rfid(child_id):
 
 # ---------------------------------------------------------------------------
 # RFID card management deactivate / replace
-# Gap 3: Data Entry Clerk (+ admin) handles card recovery, not Officer
+# Gap 3: Data Entry Clerk handles all card recovery, not admin or Officer
 # ---------------------------------------------------------------------------
 @patients_bp.route('/rfid/<int:tag_id>/deactivate', methods=['POST'])
-@require_role('data_entry_clerk', 'admin')
+@require_role('data_entry_clerk')
 def deactivate_rfid(tag_id):
     tag = RFIDTag.query.get_or_404(tag_id)
     reason = request.form.get('reason', 'Not specified')
@@ -297,7 +297,7 @@ def deactivate_rfid(tag_id):
 
 
 @patients_bp.route('/rfid/<int:tag_id>/replace', methods=['POST'])
-@require_role('data_entry_clerk', 'admin')
+@require_role('data_entry_clerk')
 def replace_rfid(tag_id):
     old_tag = RFIDTag.query.get_or_404(tag_id)
     new_uid = request.form.get('new_uid_hex', '').strip().upper()
