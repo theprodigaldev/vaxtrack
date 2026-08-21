@@ -33,6 +33,15 @@ def app():
         SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         ESP32_AUTH_TOKEN=TEST_ESP32_TOKEN,
+        # Blank so send_email()/send_sms() short-circuit to 'skipped' rather
+        # than KeyError'ing on a missing config key or making a real request.
+        ACS_CONNECTION_STRING='',
+        MAIL_SENDER='',
+        APP_BASE_URL='',
+        EBULKSMS_USERNAME='',
+        EBULKSMS_API_KEY='',
+        EBULKSMS_SENDER='VAXTRACK',
+        EBULKSMS_DND_SENDER='true',
     )
     _db.init_app(flask_app)
     flask_app.register_blueprint(auth_bp)

@@ -2,6 +2,7 @@ import hashlib
 import hmac
 import json
 import base64
+import uuid
 from datetime import date, timedelta, datetime
 from urllib.parse import urlparse
 
@@ -11,36 +12,62 @@ from flask import current_app
 from app import db
 from app.models import Appointment, Child, Vaccine, Facility, AuditLog
 
+_EBULKSMS_URL = 'https://api.ebulksms.com/sendsms.json'
+
+
+def _to_msisdn(phone):
+    """Normalise a stored guardian phone number to eBulkSMS's expected
+    international format: digits only, country code first, no leading '+'
+    (e.g. '+2348012345678' -> '2348012345678')."""
+    digits = phone.strip()
+    if digits.startswith('+'):
+        digits = digits[1:]
+    elif digits.startswith('0'):
+        digits = '234' + digits[1:]
+    return digits
+
 
 def send_sms(phone, message, app_config):
-    """Send SMS via Africa's Talking API."""
-    api_key = app_config['AT_API_KEY']
-    username = app_config['AT_USERNAME']
-    sender_id = app_config['AT_SENDER_ID']
+    """Send SMS via eBulkSMS."""
+    username = app_config['EBULKSMS_USERNAME']
+    api_key = app_config['EBULKSMS_API_KEY']
 
-    if not api_key or not username:
-        return {'status': 'skipped', 'reason': 'AT credentials not configured'}
+    if not username or not api_key:
+        return {'status': 'skipped', 'reason': 'eBulkSMS credentials not configured'}
 
-    url = 'https://api.africastalking.com/version1/messaging'
-    if username == 'sandbox':
-        url = 'https://api.sandbox.africastalking.com/version1/messaging'
+    dnd_sender = '1' if str(app_config.get('EBULKSMS_DND_SENDER', 'true')).lower() in ('1', 'true') else '0'
 
-    headers = {
-        'apiKey': api_key,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json'
-    }
     payload = {
-        'username': username,
-        'to': phone,
-        'message': message,
+        "SMS": {
+            "auth": {
+                "username": username,
+                "apikey": api_key
+            },
+            "message": {
+                "sender": app_config['EBULKSMS_SENDER'],
+                "messagetext": message,
+                "flash": "0"
+            },
+            "recipients": {
+                "gsm": [
+                    {"msidn": _to_msisdn(phone), "msgid": str(uuid.uuid4())}
+                ]
+            },
+            "dndsender": dnd_sender
+        }
     }
-    if sender_id:
-        payload['from'] = sender_id
 
     try:
-        resp = requests.post(url, headers=headers, data=payload, timeout=10)
-        return {'status': 'sent', 'response': resp.json()}
+        resp = requests.post(_EBULKSMS_URL, headers={'Content-Type': 'application/json'},
+                              json=payload, timeout=10)
+        data = resp.json()
+        status = data.get('response', {}).get('status', '')
+
+        if status == 'SUCCESS':
+            return {'status': 'sent', 'response': data}
+        if status == 'INSUFFICIENT_CREDIT':
+            return {'status': 'failed', 'error': 'insufficient_credit'}
+        return {'status': 'failed', 'error': status}
     except Exception as e:
         return {'status': 'failed', 'error': str(e)}
 
@@ -271,8 +298,8 @@ def send_reminders(app, job_type):
             elif job_type == 'morning_of':
                 target_date = today
                 msg_template = (
-                    "Reminder: {child_name}'s {vaccine} vaccination is due TODAY ({date}) "
-                    "at {facility}. Please bring the child and RFID card."
+                    "Reminder: {child_first}'s {vaccine} vaccination is due Today. "
+                    "Please bring the child and RFID card."
                 )
                 subject = "Vaccination Reminder - Today"
                 send_sms_flag = True
@@ -305,6 +332,7 @@ def send_reminders(app, job_type):
 
                     message = msg_template.format(
                         child_name=f"{child.first_name} {child.last_name}",
+                        child_first=child.first_name,
                         vaccine=f"{vaccine.antigen_name} (Dose {vaccine.dose_number})",
                         date=target_date.strftime('%A, %d %B %Y'),
                         facility=facility.facility_name

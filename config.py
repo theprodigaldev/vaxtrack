@@ -40,10 +40,15 @@ class Config:
         **({'connect_args': {'ssl': {'ssl_verify_cert': False}}} if _ssl_required else {}),
     }
 
-    # Africa's Talking
-    AT_API_KEY = os.environ.get('AT_API_KEY', '')
-    AT_USERNAME = os.environ.get('AT_USERNAME', 'sandbox')
-    AT_SENDER_ID = os.environ.get('AT_SENDER_ID', '')
+    # eBulkSMS
+    EBULKSMS_USERNAME = os.environ.get('EBULKSMS_USERNAME', '')  # account email used to log in to eBulkSMS
+    EBULKSMS_API_KEY = os.environ.get('EBULKSMS_API_KEY', '')
+    EBULKSMS_SENDER = os.environ.get('EBULKSMS_SENDER', 'VAXTRACK')  # 11-char max, no approval needed per eBulkSMS's FAQ
+    # "true" routes DND-registered numbers through eBulkSMS's fixed DND
+    # sender/number instead of dropping them, trading branding consistency
+    # for actual delivery on those numbers. Kept as a one-line config flip
+    # in case that trade-off is ever reconsidered.
+    EBULKSMS_DND_SENDER = os.environ.get('EBULKSMS_DND_SENDER', 'true')
 
     # Azure Communication Services (Email via REST)
     ACS_CONNECTION_STRING = os.environ.get('ACS_CONNECTION_STRING', '')
