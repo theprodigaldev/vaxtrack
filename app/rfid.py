@@ -1,11 +1,11 @@
 import threading
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 
 from flask import Blueprint, request, jsonify, current_app, session
 
 from app import db
 from app.models import RFIDTag, Child, Appointment, Vaccine
-from app.auth import login_required, require_role
+from app.auth import login_required, require_role, write_audit, row_to_dict
 
 rfid_bp = Blueprint('rfid', __name__)
 
@@ -128,6 +128,7 @@ def scan():
 
     today = date.today()
     three_days = today + timedelta(days=3)
+    now = datetime.utcnow()
 
     overdue = []
     due_today = []
@@ -146,6 +147,21 @@ def scan():
             'completed_date': apt.completed_date.isoformat() if apt.completed_date else None
         }
 
+        # Stamp a check-in for the officer's persisted queue. Uses status !=
+        # 'completed' (not == 'pending') so a manually-flagged 'overdue'
+        # appointment still gets checked in. A same-day re-scan (child
+        # stepped out and came back) must NOT bump checked_in_at, so it
+        # doesn't unfairly bump them behind people who arrived after their
+        # original check-in. checked_in_by stays NULL: this endpoint is
+        # hardware-authenticated, there's no user session to attribute it to.
+        if apt.status != 'completed':
+            if apt.checked_in_at is None or apt.checked_in_at.date() < today:
+                old_snapshot = row_to_dict(apt)
+                apt.checked_in_at = now
+                write_audit(None, 'UPDATE', 'appointments', apt.appointment_id,
+                            old_value=old_snapshot,
+                            new_value=row_to_dict(apt))
+
         if apt.status == 'completed':
             completed.append(apt_data)
         elif apt.scheduled_date < today:
@@ -157,6 +173,8 @@ def scan():
             due_this_week.append(apt_data)
         else:
             upcoming.append(apt_data)
+
+    db.session.commit()
 
     response_payload = {
         'status': 'found',
@@ -236,3 +254,76 @@ def scan_latest_unregistered():
             return jsonify({'status': 'idle'}), 200
         _latest_unregistered_scan['acked'] = True
         return jsonify(_latest_unregistered_scan['data']), 200
+
+
+@rfid_bp.route('/scan/checked-in')
+@require_role('data_entry_clerk', 'immunisation_officer', 'admin')
+def scan_checked_in():
+    """Persisted, searchable check-in queue for the Immunisation Officer's
+    dashboard (admin included for API completeness/testing; nothing in the
+    UI calls this for admin). Scoped to the caller's facility. One entry per
+    child, listing all their still-pending vaccines, ordered ascending by
+    their earliest check-in today (first-come, first-served).
+    """
+    facility_id = session.get('facility_id')
+    q = request.args.get('q', '').strip()
+    today = date.today()
+
+    rows_query = (
+        db.session.query(Child, Appointment, Vaccine)
+        .join(Appointment, Appointment.child_id == Child.child_id)
+        .join(Vaccine, Vaccine.vaccine_id == Appointment.vaccine_id)
+        .filter(
+            Child.facility_id == facility_id,
+            Appointment.checked_in_at.isnot(None),
+            Appointment.status != 'completed'
+        )
+    )
+
+    if q:
+        rows_query = rows_query.filter(
+            db.or_(
+                Child.first_name.ilike(f'%{q}%'),
+                Child.guardian_name.ilike(f'%{q}%')
+            )
+        )
+
+    by_child = {}
+    for child, apt, vaccine in rows_query.all():
+        # Filtered in Python rather than via a SQL DATE() function so the
+        # same code behaves identically across MySQL (prod) and SQLite (tests).
+        if apt.checked_in_at.date() != today:
+            continue
+
+        entry = by_child.get(child.child_id)
+        if entry is None:
+            entry = {
+                'child_id': child.child_id,
+                'first_name': child.first_name,
+                'last_name': child.last_name,
+                'guardian_name': child.guardian_name,
+                'vaccines': [],
+                'checked_in_at': apt.checked_in_at
+            }
+            by_child[child.child_id] = entry
+
+        entry['vaccines'].append(vaccine.antigen_name)
+        if apt.checked_in_at < entry['checked_in_at']:
+            entry['checked_in_at'] = apt.checked_in_at
+
+    queue = sorted(by_child.values(), key=lambda e: e['checked_in_at'])
+
+    return jsonify({
+        'status': 'ok',
+        'queue': [
+            {
+                'child_id': e['child_id'],
+                'first_name': e['first_name'],
+                'last_name': e['last_name'],
+                'guardian_name': e['guardian_name'],
+                'vaccines': e['vaccines'],
+                'checked_in_at': e['checked_in_at'].isoformat()
+            }
+            for e in queue
+        ]
+    }), 200

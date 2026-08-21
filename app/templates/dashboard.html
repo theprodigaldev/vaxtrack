@@ -66,8 +66,9 @@
     </div>
 </div>
 
-<!-- RFID Scan Feed shown for officer and data entry clerk -->
-{% if role in ['immunisation_officer', 'data_entry_clerk', 'admin'] %}
+{# RFID Scan Feed: data entry clerk only. Officer gets the persisted
+   checked-in queue below instead; admin gets neither. #}
+{% if role == 'data_entry_clerk' %}
 <div class="card">
     <h3>
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -86,6 +87,27 @@
             <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
         </svg>
         Waiting for card scan&hellip;
+    </div>
+</div>
+
+{# Checked-In Queue: immunisation officer only. Persisted (survives page
+   reload, unlike the clerk's ephemeral scan feed above), searchable, and
+   backed by GET /scan/checked-in. #}
+{% elif role == 'immunisation_officer' %}
+<div class="card">
+    <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        Checked-In Queue
+        <span style="font-size:.73rem; font-weight:400; color:var(--slate-400); margin-left:.25rem;">(first-come, first-served)</span>
+    </h3>
+    <input type="text" id="checkin-search" placeholder="Search by child or guardian name..."
+           style="width:100%; padding:.5rem .75rem; margin-bottom:.75rem; border:1px solid var(--slate-300);
+                  border-radius:var(--radius); font-size:.85rem; box-sizing:border-box;">
+    <div id="checkin-queue">
+        <div style="text-align:center; color:var(--slate-400); font-size:.845rem; padding:1rem;">Loading queue&hellip;</div>
     </div>
 </div>
 {% endif %}
@@ -138,7 +160,7 @@
 {% endblock %}
 
 {% block scripts %}
-{% if role in ['immunisation_officer', 'data_entry_clerk', 'admin'] %}
+{% if role == 'data_entry_clerk' %}
 <script>
 var lastScanHash = null;
 
@@ -209,6 +231,50 @@ async function pollUnregistered() {
 }
 setInterval(pollUnregistered, 2500);
 {% endif %}
+</script>
+
+{% elif role == 'immunisation_officer' %}
+<script>
+var checkinSearchTimer = null;
+
+async function fetchCheckinQueue(q) {
+    try {
+        var url = '/scan/checked-in' + (q ? ('?q=' + encodeURIComponent(q)) : '');
+        var res = await fetch(url, { signal: AbortSignal.timeout(2500) });
+        if (!res.ok) return;
+        var data = await res.json();
+        renderCheckinQueue(data.queue || []);
+    } catch(e) {}
+}
+
+function renderCheckinQueue(queue) {
+    var el = document.getElementById('checkin-queue');
+    if (!queue.length) {
+        el.innerHTML = '<div style="text-align:center; color:var(--slate-400); font-size:.845rem; padding:1rem;">No children checked in yet.</div>';
+        return;
+    }
+    el.innerHTML = queue.map(function(entry) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;' +
+               'padding:.65rem .8rem;border:1px solid var(--slate-200);border-radius:8px;margin-bottom:.5rem;">' +
+                 '<div>' +
+                   '<div style="font-size:.9rem;font-weight:700;color:var(--slate-900);">' + entry.first_name + ' ' + entry.last_name + '</div>' +
+                   '<div style="font-size:.75rem;color:var(--slate-500);margin-top:.1rem;">' + entry.vaccines.join(', ') + '</div>' +
+                 '</div>' +
+                 '<a href="/children/' + entry.child_id + '" class="btn btn-primary btn-sm">View Record</a>' +
+               '</div>';
+    }).join('');
+}
+
+document.getElementById('checkin-search').addEventListener('input', function(e) {
+    var q = e.target.value;
+    clearTimeout(checkinSearchTimer);
+    checkinSearchTimer = setTimeout(function() { fetchCheckinQueue(q); }, 250);
+});
+
+fetchCheckinQueue('');
+setInterval(function() {
+    fetchCheckinQueue(document.getElementById('checkin-search').value);
+}, 2500);
 </script>
 {% endif %}
 {% endblock %}

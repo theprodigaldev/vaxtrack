@@ -7,22 +7,24 @@ from flask import Flask
 from app import db as _db
 from app.auth import auth_bp
 from app.patients import patients_bp
+from app.rfid import rfid_bp
 from app.vaccinations import vaccinations_bp
 from app.reports import reports_bp
-from app.models import Facility, Child, RFIDTag
+from app.models import Facility, Child, RFIDTag, Vaccine, Appointment
 
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), '..', 'app', 'templates')
 _STATIC_DIR = os.path.join(os.path.dirname(__file__), '..', 'app', 'static')
+TEST_ESP32_TOKEN = 'test-esp32-token'
 
 
 @pytest.fixture
 def app():
     """Minimal Flask app wired with just the blueprints under test (auth +
-    patients), backed by an in-memory SQLite DB.
+    patients + rfid), backed by an in-memory SQLite DB.
 
     Deliberately does NOT go through app.create_app(): that factory also
     boots a real APScheduler background thread and hardcodes a MySQL DSN,
-    neither of which RBAC route tests need or should depend on.
+    neither of which these route tests need or should depend on.
     """
     flask_app = Flask('vaxtrack_test', template_folder=_TEMPLATE_DIR, static_folder=_STATIC_DIR)
     flask_app.config.update(
@@ -30,10 +32,12 @@ def app():
         SECRET_KEY='test-secret',
         SQLALCHEMY_DATABASE_URI='sqlite:///:memory:',
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
+        ESP32_AUTH_TOKEN=TEST_ESP32_TOKEN,
     )
     _db.init_app(flask_app)
     flask_app.register_blueprint(auth_bp)
     flask_app.register_blueprint(patients_bp)
+    flask_app.register_blueprint(rfid_bp)
     # Registered only because base.html's sidebar builds url_for() links to
     # these blueprints for some roles; none of their routes are exercised.
     flask_app.register_blueprint(vaccinations_bp)

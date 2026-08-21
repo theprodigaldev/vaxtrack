@@ -69,6 +69,8 @@ class Appointment(db.Model):
     scheduled_date = db.Column(db.Date, nullable=False)
     status = db.Column(db.Enum('pending', 'completed', 'overdue', name='appointment_status'), nullable=False, default='pending')
     completed_date = db.Column(db.Date, nullable=True)
+    checked_in_at = db.Column(db.DateTime, nullable=True)
+    checked_in_by = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=True)
 
 
 class Vaccination(db.Model):
