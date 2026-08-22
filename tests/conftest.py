@@ -86,6 +86,20 @@ def facility_id_2(app):
 
 
 @pytest.fixture
+def child_id(app, facility_id):
+    """A plain child row with no RFID tag, for routes unrelated to scanning."""
+    with app.app_context():
+        child = Child(
+            first_name='Test', last_name='Child', date_of_birth=date(2024, 1, 1),
+            gender='female', guardian_name='Test Guardian', guardian_phone='+2348000000000',
+            facility_id=facility_id, enrolment_date=date(2024, 1, 2)
+        )
+        _db.session.add(child)
+        _db.session.commit()
+        return child.child_id
+
+
+@pytest.fixture
 def rfid_tag(app, facility_id):
     """An active RFID tag on a real child, for the data_entry_clerk
     regression-check tests that need a genuine row to operate on."""

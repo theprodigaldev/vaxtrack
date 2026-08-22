@@ -100,6 +100,8 @@ class MedicalNote(db.Model):
     note_text = db.Column(db.Text, nullable=False)
     note_date = db.Column(db.Date, nullable=False, default=date.today)
     recorded_by = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    weight_kg = db.Column(db.Numeric(5, 2), nullable=True)
+    temperature_celsius = db.Column(db.Numeric(4, 1), nullable=True)
 
     recorder = db.relationship('User', backref='medical_notes_recorded')
 

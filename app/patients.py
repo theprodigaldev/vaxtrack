@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from decimal import Decimal, InvalidOperation
 
 from flask import Blueprint, request, render_template, redirect, url_for, flash, session
 
@@ -369,6 +370,51 @@ def add_note(child_id):
     db.session.commit()
 
     flash('Medical note added.', 'success')
+    return redirect(url_for('patients.view_child', child_id=child_id))
+
+
+# ---------------------------------------------------------------------------
+# Record vitals (data entry clerk) - extends Medical_Notes rather than a
+# new table; a standalone action, not tied to the RFID scan/check-in flow.
+# ---------------------------------------------------------------------------
+@patients_bp.route('/children/<int:child_id>/vitals', methods=['POST'])
+@require_role('data_entry_clerk', 'admin')
+def record_vitals(child_id):
+    child = Child.query.get_or_404(child_id)
+
+    try:
+        weight_kg = Decimal(request.form.get('weight_kg', '').strip())
+        temperature_celsius = Decimal(request.form.get('temperature_celsius', '').strip())
+    except (InvalidOperation, ValueError):
+        flash('Weight and temperature must be valid numbers.', 'danger')
+        return redirect(url_for('patients.view_child', child_id=child_id))
+
+    if not (Decimal('1.0') <= weight_kg <= Decimal('30.0')):
+        flash('Weight must be between 1.0 and 30.0 kg.', 'danger')
+        return redirect(url_for('patients.view_child', child_id=child_id))
+
+    if not (Decimal('30.0') <= temperature_celsius <= Decimal('43.0')):
+        flash('Temperature must be between 30.0 and 43.0 °C.', 'danger')
+        return redirect(url_for('patients.view_child', child_id=child_id))
+
+    note = MedicalNote(
+        child_id=child.child_id,
+        note_text=f"Vitals recorded: {weight_kg} kg, {temperature_celsius}°C",
+        note_date=date.today(),
+        recorded_by=session['user_id'],
+        weight_kg=weight_kg,
+        temperature_celsius=temperature_celsius
+    )
+    db.session.add(note)
+    db.session.flush()
+
+    # Gap 10: full row snapshot
+    write_audit(session['user_id'], 'INSERT', 'medical_notes', note.note_id,
+                old_value=None,
+                new_value=row_to_dict(note))
+    db.session.commit()
+
+    flash('Vitals recorded.', 'success')
     return redirect(url_for('patients.view_child', child_id=child_id))
 
 

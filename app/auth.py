@@ -1,5 +1,6 @@
 from functools import wraps
 from datetime import datetime, date
+from decimal import Decimal
 
 import bcrypt
 from flask import Blueprint, current_app, request, session, redirect, url_for, render_template, flash, jsonify
@@ -53,6 +54,8 @@ def row_to_dict(obj):
             val = '***'
         elif isinstance(val, (date, datetime)):
             val = val.isoformat()
+        elif isinstance(val, Decimal):
+            val = str(val)
         result[col.name] = val
     return result
 
