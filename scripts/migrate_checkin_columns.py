@@ -1,4 +1,5 @@
-"""Idempotent migration: add appointments.checked_in_at / checked_in_by.
+"""Idempotent migration: add appointments.checked_in_at / checked_in_by /
+checked_in_facility_id.
 
 Uses the app's existing config (same env-var-driven DB connection as
 config.Config, no hardcoded credentials). Checks INFORMATION_SCHEMA.COLUMNS
@@ -22,7 +23,7 @@ _CHECK_COLUMNS_SQL = text("""
     SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
     WHERE TABLE_SCHEMA = :db_name
       AND TABLE_NAME = 'appointments'
-      AND COLUMN_NAME IN ('checked_in_at', 'checked_in_by')
+      AND COLUMN_NAME IN ('checked_in_at', 'checked_in_by', 'checked_in_facility_id')
 """)
 
 _ADD_CHECKED_IN_AT_SQL = text(
@@ -34,6 +35,13 @@ _ADD_CHECKED_IN_BY_SQL = text(
     "ADD COLUMN checked_in_by INT NULL, "
     "ADD CONSTRAINT fk_appointments_checked_in_by "
     "FOREIGN KEY (checked_in_by) REFERENCES users(user_id)"
+)
+
+_ADD_CHECKED_IN_FACILITY_ID_SQL = text(
+    "ALTER TABLE appointments "
+    "ADD COLUMN checked_in_facility_id INT NULL, "
+    "ADD CONSTRAINT fk_appointments_checked_in_facility_id "
+    "FOREIGN KEY (checked_in_facility_id) REFERENCES facilities(facility_id)"
 )
 
 
@@ -60,6 +68,12 @@ def main():
         else:
             conn.execute(_ADD_CHECKED_IN_BY_SQL)
             applied.append('checked_in_by')
+
+        if 'checked_in_facility_id' in existing:
+            skipped.append('checked_in_facility_id')
+        else:
+            conn.execute(_ADD_CHECKED_IN_FACILITY_ID_SQL)
+            applied.append('checked_in_facility_id')
 
     print(f"Migration complete against database '{Config.DB_NAME}'.")
     if applied:

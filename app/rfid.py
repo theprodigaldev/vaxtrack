@@ -4,7 +4,7 @@ from datetime import date, timedelta, datetime
 from flask import Blueprint, request, jsonify, current_app, session
 
 from app import db
-from app.models import RFIDTag, Child, Appointment, Vaccine
+from app.models import RFIDTag, Child, Appointment, Vaccine, Facility
 from app.auth import login_required, require_role, write_audit, row_to_dict
 
 rfid_bp = Blueprint('rfid', __name__)
@@ -13,10 +13,12 @@ rfid_bp = Blueprint('rfid', __name__)
 _scan_lock = threading.Lock()
 _latest_scans = {}  # {facility_id: {'data': dict, 'acked': bool}}
 
-# Global single-slot buffer for unknown-UID scans. No facility can be derived
-# when the UID has no matching tag, so this is not facility-scoped.
-# Guarded by the same _scan_lock for simplicity.
-_latest_unregistered_scan = {'data': None, 'acked': True}
+# Per-facility buffer for unknown-UID scans, keyed by the reader's declared
+# facility_id (same pattern as _latest_scans). Previously this was a single
+# global slot, justified by "no child record to derive a facility from" -
+# that no longer applies now every /scan POST declares its own facility_id
+# independent of any child lookup.
+_latest_unregistered_scans = {}  # {facility_id: {'data': dict, 'acked': bool}}
 
 
 def build_lcd_payload(status, overdue=None, due_today=None, due_this_week=None,
@@ -86,22 +88,29 @@ def scan():
     if not data or 'uid' not in data:
         return jsonify({'status': 'error', 'message': 'Missing UID'}), 400
 
+    if 'facility_id' not in data:
+        return jsonify({'status': 'error', 'message': 'Missing facility_id'}), 400
+
+    reader_facility_id = data['facility_id']
+    if not Facility.query.get(reader_facility_id):
+        return jsonify({'status': 'error', 'message': 'Unknown facility_id'}), 400
+
     uid = data['uid'].strip().upper()
 
     tag = RFIDTag.query.filter_by(uid_hex=uid).first()
 
     if not tag:
-        # No child is linked to this UID, so push to the global unregistered buffer
-        # so a clerk on the dashboard or registration page can capture it.
+        # No child is linked to this UID, so push to the reader's own
+        # facility-keyed unregistered buffer so a clerk at that facility's
+        # dashboard can capture it.
         payload = {'status': 'unknown', 'uid_hex': uid, 'lcd': build_lcd_payload('unknown', uid_hex=uid)}
         with _scan_lock:
-            _latest_unregistered_scan['data'] = payload
-            _latest_unregistered_scan['acked'] = False
+            _latest_unregistered_scans[reader_facility_id] = {'data': payload, 'acked': False}
         return jsonify(payload), 200
 
     if tag.status == 'inactive':
-        # Child exists but their card is deactivated. Fetch the child so the
-        # facility-keyed buffer can be populated (same routing as 'found').
+        # Child exists but their card is deactivated. Routing follows the
+        # reader's declared facility_id, not the child's home facility.
         child = Child.query.get(tag.child_id)
         payload = {
             'status': 'deactivated',
@@ -109,9 +118,8 @@ def scan():
             'child_id': child.child_id if child else None,
             'lcd': build_lcd_payload('deactivated', uid_hex=uid),
         }
-        if child:
-            with _scan_lock:
-                _latest_scans[child.facility_id] = {'data': payload, 'acked': False}
+        with _scan_lock:
+            _latest_scans[reader_facility_id] = {'data': payload, 'acked': False}
         return jsonify(payload), 200
 
     child = Child.query.get(tag.child_id)
@@ -150,14 +158,17 @@ def scan():
         # Stamp a check-in for the officer's persisted queue. Uses status !=
         # 'completed' (not == 'pending') so a manually-flagged 'overdue'
         # appointment still gets checked in. A same-day re-scan (child
-        # stepped out and came back) must NOT bump checked_in_at, so it
-        # doesn't unfairly bump them behind people who arrived after their
-        # original check-in. checked_in_by stays NULL: this endpoint is
-        # hardware-authenticated, there's no user session to attribute it to.
+        # stepped out and came back) must NOT bump checked_in_at/
+        # checked_in_facility_id, so it doesn't unfairly bump them behind
+        # people who arrived after their original check-in, and stays
+        # attributed to whichever facility's reader checked them in first.
+        # checked_in_by stays NULL: this endpoint is hardware-authenticated,
+        # there's no user session to attribute it to.
         if apt.status != 'completed':
             if apt.checked_in_at is None or apt.checked_in_at.date() < today:
                 old_snapshot = row_to_dict(apt)
                 apt.checked_in_at = now
+                apt.checked_in_facility_id = reader_facility_id
                 write_audit(None, 'UPDATE', 'appointments', apt.appointment_id,
                             old_value=old_snapshot,
                             new_value=row_to_dict(apt))
@@ -215,9 +226,11 @@ def scan():
         )
     }
 
-    # Push into scan buffer: dashboard JS will pick this up within 2-3 seconds
+    # Push into scan buffer: dashboard JS will pick this up within 2-3 seconds.
+    # Keyed by the reader's declared facility_id, not the child's home
+    # facility - routing follows the physical device, not the patient.
     with _scan_lock:
-        _latest_scans[child.facility_id] = {
+        _latest_scans[reader_facility_id] = {
             'data': response_payload,
             'acked': False
         }
@@ -244,16 +257,17 @@ def scan_latest():
 @rfid_bp.route('/scan/latest-unregistered')
 @require_role('data_entry_clerk', 'admin')
 def scan_latest_unregistered():
-    """Global polling endpoint for unknown (unregistered) RFID scans.
-    Returns the latest unacknowledged unknown-UID scan and marks it acknowledged.
-    Not scoped by facility: any authorised clerk sees the same pending scan,
-    since there is no child record to derive a facility from.
+    """Polling endpoint for unknown (unregistered) RFID scans.
+    Returns the latest unacknowledged unknown-UID scan for the caller's
+    facility, then marks it acknowledged, mirroring GET /scan/latest.
     """
+    fid = session.get('facility_id')
     with _scan_lock:
-        if _latest_unregistered_scan['acked']:
+        scan = _latest_unregistered_scans.get(fid)
+        if not scan or scan['acked']:
             return jsonify({'status': 'idle'}), 200
-        _latest_unregistered_scan['acked'] = True
-        return jsonify(_latest_unregistered_scan['data']), 200
+        _latest_unregistered_scans[fid]['acked'] = True
+        return jsonify(scan['data']), 200
 
 
 @rfid_bp.route('/scan/checked-in')
@@ -274,7 +288,7 @@ def scan_checked_in():
         .join(Appointment, Appointment.child_id == Child.child_id)
         .join(Vaccine, Vaccine.vaccine_id == Appointment.vaccine_id)
         .filter(
-            Child.facility_id == facility_id,
+            Appointment.checked_in_facility_id == facility_id,
             Appointment.checked_in_at.isnot(None),
             Appointment.status != 'completed'
         )

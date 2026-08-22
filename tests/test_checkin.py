@@ -38,7 +38,8 @@ def _make_child_with_appointment(app, facility_id, uid_hex='AABBCCDD',
         apt = Appointment(
             child_id=child.child_id, vaccine_id=vaccine.vaccine_id,
             scheduled_date=scheduled_date or date.today(),
-            status=apt_status, checked_in_at=checked_in_at
+            status=apt_status, checked_in_at=checked_in_at,
+            checked_in_facility_id=facility_id if checked_in_at else None
         )
         _db.session.add(apt)
 
@@ -60,7 +61,7 @@ def _get_appointment(app, appointment_id):
 def test_first_scan_of_day_sets_checked_in_at(app, client, facility_id):
     child_id, apt_id = _make_child_with_appointment(app, facility_id, checked_in_at=None)
 
-    resp = client.post('/scan', json={'uid': 'AABBCCDD'}, headers=SCAN_HEADERS)
+    resp = client.post('/scan', json={'uid': 'AABBCCDD', 'facility_id': facility_id}, headers=SCAN_HEADERS)
     assert resp.status_code == 200
 
     apt = _get_appointment(app, apt_id)
@@ -72,7 +73,7 @@ def test_same_day_rescan_does_not_change_checked_in_at(app, client, facility_id)
     original = datetime.combine(date.today(), datetime.min.time()).replace(hour=8)
     child_id, apt_id = _make_child_with_appointment(app, facility_id, checked_in_at=original)
 
-    resp = client.post('/scan', json={'uid': 'AABBCCDD'}, headers=SCAN_HEADERS)
+    resp = client.post('/scan', json={'uid': 'AABBCCDD', 'facility_id': facility_id}, headers=SCAN_HEADERS)
     assert resp.status_code == 200
 
     apt = _get_appointment(app, apt_id)
@@ -83,7 +84,7 @@ def test_new_calendar_day_rescan_refreshes_checked_in_at(app, client, facility_i
     yesterday_stamp = datetime.combine(date.today() - timedelta(days=1), datetime.min.time()).replace(hour=9)
     child_id, apt_id = _make_child_with_appointment(app, facility_id, checked_in_at=yesterday_stamp)
 
-    resp = client.post('/scan', json={'uid': 'AABBCCDD'}, headers=SCAN_HEADERS)
+    resp = client.post('/scan', json={'uid': 'AABBCCDD', 'facility_id': facility_id}, headers=SCAN_HEADERS)
     assert resp.status_code == 200
 
     apt = _get_appointment(app, apt_id)
@@ -94,7 +95,7 @@ def test_new_calendar_day_rescan_refreshes_checked_in_at(app, client, facility_i
 def test_checkin_stamp_writes_audit_log_with_user_id_none(app, client, facility_id):
     child_id, apt_id = _make_child_with_appointment(app, facility_id, checked_in_at=None)
 
-    client.post('/scan', json={'uid': 'AABBCCDD'}, headers=SCAN_HEADERS)
+    client.post('/scan', json={'uid': 'AABBCCDD', 'facility_id': facility_id}, headers=SCAN_HEADERS)
 
     with app.app_context():
         logs = AuditLog.query.filter_by(
@@ -112,7 +113,7 @@ def test_manually_flagged_overdue_still_gets_checked_in(app, client, facility_id
         scheduled_date=date.today() - timedelta(days=5), checked_in_at=None
     )
 
-    resp = client.post('/scan', json={'uid': 'AABBCCDD'}, headers=SCAN_HEADERS)
+    resp = client.post('/scan', json={'uid': 'AABBCCDD', 'facility_id': facility_id}, headers=SCAN_HEADERS)
     assert resp.status_code == 200
 
     apt = _get_appointment(app, apt_id)
@@ -158,7 +159,7 @@ def test_child_with_one_completed_one_pending_still_in_queue(app, client, facili
                                      checked_in_at=None)
         pending_apt = Appointment(child_id=child.child_id, vaccine_id=v2.vaccine_id,
                                    scheduled_date=date.today(), status='pending',
-                                   checked_in_at=now)
+                                   checked_in_at=now, checked_in_facility_id=facility_id)
         _db.session.add_all([completed_apt, pending_apt])
         _db.session.commit()
         child_id = child.child_id

@@ -71,6 +71,7 @@ class Appointment(db.Model):
     completed_date = db.Column(db.Date, nullable=True)
     checked_in_at = db.Column(db.DateTime, nullable=True)
     checked_in_by = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=True)
+    checked_in_facility_id = db.Column(db.Integer, db.ForeignKey('facilities.facility_id'), nullable=True)
 
 
 class Vaccination(db.Model):

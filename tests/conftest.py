@@ -67,7 +67,19 @@ def client(app):
 @pytest.fixture
 def facility_id(app):
     with app.app_context():
-        fac = Facility(facility_name='Test Clinic', lga='Test LGA', state='Lagos')
+        fac = Facility(facility_name='Surulere Clinic', lga='Surulere', state='Lagos')
+        _db.session.add(fac)
+        _db.session.commit()
+        return fac.facility_id
+
+
+@pytest.fixture
+def facility_id_2(app):
+    """A second, distinct facility - for tests proving a reader's declared
+    facility_id routes scans there even when it differs from the child's
+    home facility (facility_id fixture)."""
+    with app.app_context():
+        fac = Facility(facility_name='Ikeja Clinic', lga='Ikeja', state='Lagos')
         _db.session.add(fac)
         _db.session.commit()
         return fac.facility_id
@@ -90,6 +102,21 @@ def rfid_tag(app, facility_id):
         _db.session.add(tag)
         _db.session.commit()
         return tag.tag_id
+
+
+@pytest.fixture(autouse=True)
+def _reset_rfid_scan_buffers():
+    """app/rfid.py's _latest_scans / _latest_unregistered_scans are
+    module-level dicts, not tied to the per-test DB fixture. Since the
+    in-memory DB resets its autoincrement IDs every test, a leftover buffer
+    entry from an earlier test could collide with a facility_id reused in a
+    later test. Clear both before and after every test for isolation."""
+    from app import rfid as rfid_module
+    rfid_module._latest_scans.clear()
+    rfid_module._latest_unregistered_scans.clear()
+    yield
+    rfid_module._latest_scans.clear()
+    rfid_module._latest_unregistered_scans.clear()
 
 
 def login_as(client, role, facility_id, user_id=1):
