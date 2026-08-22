@@ -4,7 +4,7 @@ from decimal import Decimal, InvalidOperation
 from flask import Blueprint, request, render_template, redirect, url_for, flash, session
 
 from app import db
-from app.models import Child, RFIDTag, Appointment, Vaccine, MedicalNote, Facility
+from app.models import Child, RFIDTag, Appointment, Vaccine, MedicalNote, Facility, Vaccination
 from app.auth import require_role, login_required, write_audit, row_to_dict
 
 patients_bp = Blueprint('patients', __name__)
@@ -187,6 +187,10 @@ def view_child(child_id):
     vaccines = {v.vaccine_id: v for v in Vaccine.query.all()}
     today = date.today()
 
+    vaccinations = Vaccination.query.filter_by(child_id=child_id).all()
+    vaccinations_by_appointment = {v.appointment_id: v for v in vaccinations}
+    adverse_events = [v for v in vaccinations if v.adverse_event_reported]
+
     return render_template('view_child.html',
                            child=child,
                            appointments=appointments,
@@ -194,7 +198,9 @@ def view_child(child_id):
                            notes=notes,
                            vaccines=vaccines,
                            today=today,
-                           timedelta=timedelta)
+                           timedelta=timedelta,
+                           vaccinations_by_appointment=vaccinations_by_appointment,
+                           adverse_events=adverse_events)
 
 
 # ---------------------------------------------------------------------------
@@ -492,8 +498,9 @@ def reschedule_appointment(appointment_id):
 
     old_snapshot = row_to_dict(appointment)
     appointment.scheduled_date = new_date
-    if appointment.status == 'overdue':
+    if appointment.status in ('overdue', 'deferred'):
         appointment.status = 'pending'
+        appointment.deferral_reason = None
 
     write_audit(session['user_id'], 'UPDATE', 'appointments', appointment.appointment_id,
                 old_value=old_snapshot,
@@ -501,4 +508,31 @@ def reschedule_appointment(appointment_id):
     db.session.commit()
 
     flash(f'Appointment rescheduled to {new_date.strftime("%d %B %Y")}.', 'success')
+    return redirect(url_for('patients.view_child', child_id=appointment.child_id))
+
+
+# ---------------------------------------------------------------------------
+# Defer an appointment (immunisation officer + admin) - a resolved clinical
+# decision (e.g. child unwell, contraindication), distinct from a no-show.
+# ---------------------------------------------------------------------------
+@patients_bp.route('/appointments/<int:appointment_id>/defer', methods=['POST'])
+@require_role('immunisation_officer', 'admin')
+def defer_appointment(appointment_id):
+    appointment = Appointment.query.get_or_404(appointment_id)
+    deferral_reason = request.form.get('deferral_reason', '').strip()
+
+    if not deferral_reason:
+        flash('A reason is required to defer an appointment.', 'danger')
+        return redirect(url_for('patients.view_child', child_id=appointment.child_id))
+
+    old_snapshot = row_to_dict(appointment)
+    appointment.status = 'deferred'
+    appointment.deferral_reason = deferral_reason
+
+    write_audit(session['user_id'], 'UPDATE', 'appointments', appointment.appointment_id,
+                old_value=old_snapshot,
+                new_value=row_to_dict(appointment))
+    db.session.commit()
+
+    flash('Appointment deferred.', 'warning')
     return redirect(url_for('patients.view_child', child_id=appointment.child_id))

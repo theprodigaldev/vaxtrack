@@ -136,6 +136,45 @@ def facility_report():
     return render_template('reports_facility.html', stats=stats)
 
 
+@reports_bp.route('/reports/batch-search')
+@require_role('admin')
+def batch_search():
+    """Find every child who received a specific vaccine batch - for recalls
+    or adverse-event tracing."""
+    batch = request.args.get('batch', '').strip()
+    results = []
+
+    if batch:
+        results = (
+            db.session.query(
+                Child.child_id,
+                Child.first_name,
+                Child.last_name,
+                Vaccine.antigen_name,
+                Vaccination.dose_number,
+                Vaccination.date_given,
+                Facility.facility_name
+            )
+            .join(Child, Child.child_id == Vaccination.child_id)
+            .join(Vaccine, Vaccine.vaccine_id == Vaccination.vaccine_id)
+            .join(Facility, Facility.facility_id == Vaccination.facility_id)
+            .filter(Vaccination.batch_number == batch)
+            .order_by(Vaccination.date_given)
+            .all()
+        )
+
+    export = request.args.get('export')
+    if export == 'csv' and batch:
+        return _export_csv(
+            'batch_search_report.csv',
+            ['Child ID', 'Child Name', 'Vaccine', 'Dose', 'Date Given', 'Facility'],
+            [[r.child_id, f"{r.first_name} {r.last_name}", r.antigen_name, r.dose_number,
+              r.date_given.isoformat(), r.facility_name] for r in results]
+        )
+
+    return render_template('reports_batch_search.html', results=results, batch=batch)
+
+
 def _export_csv(filename, headers, rows):
     """Generate a CSV file response."""
     output = io.StringIO()

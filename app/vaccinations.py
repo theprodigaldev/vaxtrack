@@ -23,6 +23,7 @@ def vaccination_form():
     appointment = None
     vaccine = None
     pending_appointments = []
+    adverse_events = []
 
     if child_id:
         child = Child.query.get_or_404(child_id)
@@ -31,6 +32,13 @@ def vaccination_form():
             .filter_by(child_id=child_id, status='pending')
             .join(Vaccine)
             .order_by(Appointment.scheduled_date)
+            .all()
+        )
+        # Prior AEFI history for this child: decision support for the
+        # clinician recording a new dose, not a block on doing so.
+        adverse_events = (
+            Vaccination.query
+            .filter_by(child_id=child_id, adverse_event_reported=True)
             .all()
         )
 
@@ -47,7 +55,8 @@ def vaccination_form():
                            appointment=appointment,
                            vaccine=vaccine,
                            pending_appointments=pending_appointments,
-                           vaccines=vaccines)
+                           vaccines=vaccines,
+                           adverse_events=adverse_events)
 
 
 @vaccinations_bp.route('/vaccinations', methods=['POST'])
@@ -116,3 +125,37 @@ def record_vaccination():
         flash(f'Error recording vaccination: {str(e)}', 'danger')
         return redirect(url_for('vaccinations.vaccination_form',
                                 child_id=child.child_id))
+
+
+# ---------------------------------------------------------------------------
+# Report an adverse event following immunisation (AEFI)
+# ---------------------------------------------------------------------------
+@vaccinations_bp.route('/vaccinations/<int:vaccination_id>/adverse-event', methods=['POST'])
+@require_role('immunisation_officer', 'admin')
+def report_adverse_event(vaccination_id):
+    vaccination = Vaccination.query.get_or_404(vaccination_id)
+
+    severity = request.form.get('severity', '')
+    description = request.form.get('description', '').strip()
+
+    if severity not in ('mild', 'moderate', 'severe'):
+        flash('Please select a valid severity.', 'danger')
+        return redirect(url_for('patients.view_child', child_id=vaccination.child_id))
+
+    if not description:
+        flash('A description of the adverse event is required.', 'danger')
+        return redirect(url_for('patients.view_child', child_id=vaccination.child_id))
+
+    old_snapshot = row_to_dict(vaccination)
+    vaccination.adverse_event_reported = True
+    vaccination.adverse_event_severity = severity
+    vaccination.adverse_event_description = description
+    vaccination.adverse_event_date = date.today()
+
+    write_audit(session['user_id'], 'UPDATE', 'vaccinations', vaccination.vaccination_id,
+                old_value=old_snapshot,
+                new_value=row_to_dict(vaccination))
+    db.session.commit()
+
+    flash('Adverse event reported.', 'warning')
+    return redirect(url_for('patients.view_child', child_id=vaccination.child_id))

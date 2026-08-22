@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Batch Search VaxTrack{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2><i data-feather="search" class="feather-lg" style="color:var(--teal-500);"></i> Batch Search</h2>
+        <p>Find every child who received a specific vaccine batch, for recalls or adverse-event tracing.</p>
+    </div>
+    {% if results %}
+    <a href="{{ url_for('reports.batch_search', batch=batch, export='csv') }}" class="btn btn-secondary btn-sm">
+        <i data-feather="download"></i> Export CSV
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <form method="GET" action="{{ url_for('reports.batch_search') }}" style="display:flex; gap:.5rem; align-items:flex-end; flex-wrap:wrap;">
+        <div class="form-group" style="margin-bottom:0; flex:1; min-width:220px;">
+            <label for="batch">Batch Number</label>
+            <input type="text" id="batch" name="batch" value="{{ batch }}" placeholder="e.g. VAX-2025-001" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+    </form>
+</div>
+
+{% if batch %}
+<div class="card">
+    {% if results %}
+    <div class="table-wrap">
+    <table>
+        <thead><tr><th>Child</th><th>Vaccine</th><th>Dose</th><th>Date Given</th><th>Facility</th><th></th></tr></thead>
+        <tbody>
+        {% for r in results %}
+        <tr>
+            <td style="font-weight:600;">{{ r.first_name }} {{ r.last_name }}</td>
+            <td>{{ r.antigen_name }}</td>
+            <td>{{ r.dose_number }}</td>
+            <td>{{ r.date_given.strftime('%d %b %Y') }}</td>
+            <td>{{ r.facility_name }}</td>
+            <td><a href="{{ url_for('patients.view_child', child_id=r.child_id) }}" class="btn btn-primary btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p style="color:var(--slate-400); font-size:.875rem;">No vaccinations found for batch "{{ batch }}".</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

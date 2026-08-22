@@ -175,6 +175,11 @@ def scan():
 
         if apt.status == 'completed':
             completed.append(apt_data)
+        elif apt.status == 'deferred':
+            # A resolved clinical decision, not a no-show - excluded from
+            # every bucket here so it never inflates the overdue count/LCD
+            # state, regardless of how far in the past scheduled_date is.
+            pass
         elif apt.scheduled_date < today:
             apt_data['status'] = 'overdue'
             overdue.append(apt_data)

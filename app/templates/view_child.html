@@ -10,6 +10,27 @@
     <a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary btn-sm">Back to Search</a>
 </div>
 
+<!-- Adverse event history: information for the clinician to review, not an
+     instruction or a block on recording a new dose. -->
+{% if adverse_events %}
+<div class="card" style="border-color:var(--amber-500); background:#fffbeb; margin-bottom:1rem;">
+    <h3 style="margin-top:0; color:#92400e;">
+        <i data-feather="alert-triangle" class="feather-lg"></i> Prior Adverse Event(s) on Record
+    </h3>
+    <ul style="margin:0; padding-left:1.25rem; font-size:.875rem; color:#92400e;">
+        {% for ae in adverse_events %}
+        {% set v = vaccines.get(ae.vaccine_id) %}
+        <li style="margin-bottom:.35rem;">
+            <strong>{{ v.antigen_name if v else 'Unknown vaccine' }}</strong>
+            on {{ ae.adverse_event_date.strftime('%d %B %Y') if ae.adverse_event_date else ae.date_given.strftime('%d %B %Y') }},
+            severity <span class="badge badge-{% if ae.adverse_event_severity == 'severe' %}danger{% elif ae.adverse_event_severity == 'moderate' %}warning{% else %}secondary{% endif %}">{{ ae.adverse_event_severity | title }}</span>
+            {% if ae.adverse_event_description %}: {{ ae.adverse_event_description }}{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <!-- Summary stats -->
 {% set overdue_count = appointments | selectattr('scheduled_date', 'lt', today) | selectattr('status', 'eq', 'pending') | list | length %}
 {% set completed_count = appointments | selectattr('status', 'eq', 'completed') | list | length %}
@@ -112,7 +133,7 @@
         <thead>
             <tr>
                 <th>Vaccine</th><th>Dose</th><th>Scheduled</th><th>Status</th><th>Completed</th>
-                {% if session.get('role') in ['data_entry_clerk', 'admin'] %}<th></th>{% endif %}
+                {% if session.get('role') in ['data_entry_clerk', 'admin', 'immunisation_officer'] %}<th></th>{% endif %}
             </tr>
         </thead>
         <tbody>
@@ -124,6 +145,9 @@
         {% elif apt.status == 'overdue' %}
             {% set row_class = 'row-overdue' %}
             {% set badge = '<span class="badge badge-danger">Overdue</span>' %}
+        {% elif apt.status == 'deferred' %}
+            {% set row_class = 'row-due-soon' %}
+            {% set badge = '<span class="badge badge-secondary">Deferred</span>' %}
         {% elif apt.scheduled_date < today %}
             {% set row_class = 'row-overdue apt-row' %}
             {% set badge = '<span class="badge badge-danger">Overdue</span>' %}
@@ -151,13 +175,30 @@
             <td>{{ apt.scheduled_date.strftime('%d %b %Y') }}</td>
             <td>{{ badge | safe }}</td>
             <td>{{ apt.completed_date.strftime('%d %b %Y') if apt.completed_date else '' }}</td>
-            {% if session.get('role') in ['data_entry_clerk', 'admin'] %}
-            <td>
-                {% if apt.status in ['pending', 'overdue'] %}
+            {% if session.get('role') in ['data_entry_clerk', 'admin', 'immunisation_officer'] %}
+            <td style="display:flex; gap:.4rem; flex-wrap:wrap;">
+                {% if session.get('role') in ['data_entry_clerk', 'admin'] and apt.status in ['pending', 'overdue', 'deferred'] %}
                 <button type="button" class="btn btn-secondary btn-sm"
                     onclick="openReschedule({{ apt.appointment_id }}, '{{ apt.scheduled_date.isoformat() }}')">
                     <i data-feather="refresh-cw"></i> Reschedule
                 </button>
+                {% endif %}
+                {% if session.get('role') in ['immunisation_officer', 'admin'] and apt.status in ['pending', 'overdue'] %}
+                <button type="button" class="btn btn-warning btn-sm"
+                    onclick="openDefer({{ apt.appointment_id }})">
+                    <i data-feather="pause-circle"></i> Defer
+                </button>
+                {% endif %}
+                {% if session.get('role') in ['immunisation_officer', 'admin'] and apt.status == 'completed' %}
+                    {% set given = vaccinations_by_appointment.get(apt.appointment_id) %}
+                    {% if given and not given.adverse_event_reported %}
+                    <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="openAdverseEvent({{ given.vaccination_id }})">
+                        <i data-feather="alert-triangle"></i> Report Adverse Event
+                    </button>
+                    {% elif given and given.adverse_event_reported %}
+                    <span class="badge badge-warning">AEFI Reported</span>
+                    {% endif %}
                 {% endif %}
             </td>
             {% endif %}
@@ -279,6 +320,68 @@
 </div>
 {% endif %}
 
+<!-- Defer modal (immunisation officer + admin) -->
+{% if session.get('role') in ['immunisation_officer', 'admin'] %}
+<div class="modal-backdrop" id="defer-modal">
+    <div class="modal" style="max-width:400px;">
+        <div class="modal-header">
+            <h3><i data-feather="pause-circle"></i> Defer Appointment</h3>
+            <button class="modal-close" onclick="closeModal('defer-modal')">&times;</button>
+        </div>
+        <form method="POST" id="defer-form" action="" class="no-loading">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="defer-reason">Reason for Deferral</label>
+                    <textarea id="defer-reason" name="deferral_reason" required
+                              placeholder="e.g. Child unwell today, contraindication noted…"></textarea>
+                </div>
+                <p style="font-size:.76rem; color:var(--slate-400);">
+                    This marks the appointment as deferred rather than overdue. Rescheduling it later resets it to pending.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('defer-modal')">Cancel</button>
+                <button type="submit" class="btn btn-warning">Confirm Defer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Report Adverse Event modal (immunisation officer + admin) -->
+{% if session.get('role') in ['immunisation_officer', 'admin'] %}
+<div class="modal-backdrop" id="adverse-event-modal">
+    <div class="modal" style="max-width:440px;">
+        <div class="modal-header">
+            <h3><i data-feather="alert-triangle"></i> Report Adverse Event</h3>
+            <button class="modal-close" onclick="closeModal('adverse-event-modal')">&times;</button>
+        </div>
+        <form method="POST" id="adverse-event-form" action="" class="no-loading">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="ae-severity">Severity</label>
+                    <select id="ae-severity" name="severity" required>
+                        <option value="">-- Select Severity --</option>
+                        <option value="mild">Mild</option>
+                        <option value="moderate">Moderate</option>
+                        <option value="severe">Severe</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ae-description">Description</label>
+                    <textarea id="ae-description" name="description" required
+                              placeholder="Describe the reaction observed…"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('adverse-event-modal')">Cancel</button>
+                <button type="submit" class="btn btn-warning">Submit Report</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
@@ -288,6 +391,19 @@ function openReschedule(aptId, currentDate) {
     document.getElementById('reschedule-new-date').value = currentDate;
     document.getElementById('reschedule-form').action = '/appointments/' + aptId + '/reschedule';
     openModal('reschedule-modal');
+}
+</script>
+{% endif %}
+{% if session.get('role') in ['immunisation_officer', 'admin'] %}
+<script>
+function openDefer(aptId) {
+    document.getElementById('defer-form').action = '/appointments/' + aptId + '/defer';
+    openModal('defer-modal');
+}
+
+function openAdverseEvent(vaccinationId) {
+    document.getElementById('adverse-event-form').action = '/vaccinations/' + vaccinationId + '/adverse-event';
+    openModal('adverse-event-modal');
 }
 </script>
 {% endif %}

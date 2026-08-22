@@ -67,11 +67,12 @@ class Appointment(db.Model):
     child_id = db.Column(db.Integer, db.ForeignKey('children.child_id'), nullable=False)
     vaccine_id = db.Column(db.Integer, db.ForeignKey('vaccines.vaccine_id'), nullable=False)
     scheduled_date = db.Column(db.Date, nullable=False)
-    status = db.Column(db.Enum('pending', 'completed', 'overdue', name='appointment_status'), nullable=False, default='pending')
+    status = db.Column(db.Enum('pending', 'completed', 'overdue', 'deferred', name='appointment_status'), nullable=False, default='pending')
     completed_date = db.Column(db.Date, nullable=True)
     checked_in_at = db.Column(db.DateTime, nullable=True)
     checked_in_by = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=True)
     checked_in_facility_id = db.Column(db.Integer, db.ForeignKey('facilities.facility_id'), nullable=True)
+    deferral_reason = db.Column(db.Text, nullable=True)
 
 
 class Vaccination(db.Model):
@@ -86,6 +87,10 @@ class Vaccination(db.Model):
     batch_number = db.Column(db.String(50), nullable=False)
     administered_by = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
     facility_id = db.Column(db.Integer, db.ForeignKey('facilities.facility_id'), nullable=False)
+    adverse_event_reported = db.Column(db.Boolean, nullable=False, default=False)
+    adverse_event_severity = db.Column(db.Enum('mild', 'moderate', 'severe', name='aefi_severity'), nullable=True)
+    adverse_event_description = db.Column(db.Text, nullable=True)
+    adverse_event_date = db.Column(db.Date, nullable=True)
 
     appointment = db.relationship('Appointment', backref='vaccination', uselist=False)
     administrator = db.relationship('User', backref='vaccinations_given')
