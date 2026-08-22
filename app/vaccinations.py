@@ -131,7 +131,7 @@ def record_vaccination():
 # Report an adverse event following immunisation (AEFI)
 # ---------------------------------------------------------------------------
 @vaccinations_bp.route('/vaccinations/<int:vaccination_id>/adverse-event', methods=['POST'])
-@require_role('immunisation_officer', 'admin')
+@require_role('immunisation_officer', 'data_entry_clerk')
 def report_adverse_event(vaccination_id):
     vaccination = Vaccination.query.get_or_404(vaccination_id)
 

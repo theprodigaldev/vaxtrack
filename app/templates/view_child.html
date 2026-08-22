@@ -189,15 +189,18 @@
                     <i data-feather="pause-circle"></i> Defer
                 </button>
                 {% endif %}
-                {% if session.get('role') in ['immunisation_officer', 'admin'] and apt.status == 'completed' %}
+                {% if apt.status == 'completed' %}
                     {% set given = vaccinations_by_appointment.get(apt.appointment_id) %}
-                    {% if given and not given.adverse_event_reported %}
+                    {% if given and given.adverse_event_reported %}
+                    <!-- Read-only safety indicator: visible to anyone who can view
+                         this page at all (admin included), regardless of who can
+                         report a new event. -->
+                    <span class="badge badge-warning">AEFI Reported</span>
+                    {% elif given and session.get('role') in ['immunisation_officer', 'data_entry_clerk'] %}
                     <button type="button" class="btn btn-secondary btn-sm"
                         onclick="openAdverseEvent({{ given.vaccination_id }})">
                         <i data-feather="alert-triangle"></i> Report Adverse Event
                     </button>
-                    {% elif given and given.adverse_event_reported %}
-                    <span class="badge badge-warning">AEFI Reported</span>
                     {% endif %}
                 {% endif %}
             </td>
@@ -348,8 +351,8 @@
 </div>
 {% endif %}
 
-<!-- Report Adverse Event modal (immunisation officer + admin) -->
-{% if session.get('role') in ['immunisation_officer', 'admin'] %}
+<!-- Report Adverse Event modal (immunisation officer + data entry clerk) -->
+{% if session.get('role') in ['immunisation_officer', 'data_entry_clerk'] %}
 <div class="modal-backdrop" id="adverse-event-modal">
     <div class="modal" style="max-width:440px;">
         <div class="modal-header">
@@ -400,7 +403,10 @@ function openDefer(aptId) {
     document.getElementById('defer-form').action = '/appointments/' + aptId + '/defer';
     openModal('defer-modal');
 }
-
+</script>
+{% endif %}
+{% if session.get('role') in ['immunisation_officer', 'data_entry_clerk'] %}
+<script>
 function openAdverseEvent(vaccinationId) {
     document.getElementById('adverse-event-form').action = '/vaccinations/' + vaccinationId + '/adverse-event';
     openModal('adverse-event-modal');

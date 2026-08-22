@@ -129,7 +129,8 @@ def test_report_adverse_event_requires_description(app, client, facility_id):
     assert vax.adverse_event_reported is False
 
 
-def test_clerk_cannot_report_adverse_event(app, client, facility_id):
+def test_clerk_can_report_adverse_event(app, client, facility_id):
+    """Reporting permission is now immunisation_officer + data_entry_clerk."""
     child_id = _make_child(app, facility_id)
     vaccine_id = _make_vaccine(app)
     apt_id = _make_appointment(app, child_id, vaccine_id, status='completed')
@@ -139,8 +140,72 @@ def test_clerk_cannot_report_adverse_event(app, client, facility_id):
     resp = client.post(f'/vaccinations/{vax_id}/adverse-event',
                         data={'severity': 'mild', 'description': 'Rash.'})
 
+    assert resp.status_code == 302
+    vax = _get_vaccination(app, vax_id)
+    assert vax.adverse_event_reported is True
+    assert vax.adverse_event_severity == 'mild'
+
+
+def test_admin_cannot_report_adverse_event(app, client, facility_id):
+    """Admin lost the reporting permission - this is distinct from admin's
+    continued read-only visibility of an existing report (see the
+    companion test below)."""
+    child_id = _make_child(app, facility_id)
+    vaccine_id = _make_vaccine(app)
+    apt_id = _make_appointment(app, child_id, vaccine_id, status='completed')
+    vax_id = _make_completed_vaccination(app, child_id, vaccine_id, apt_id, facility_id)
+
+    login_as(client, 'admin', facility_id)
+    resp = client.post(f'/vaccinations/{vax_id}/adverse-event',
+                        data={'severity': 'mild', 'description': 'Rash.'})
+
     assert resp.status_code == 403
     assert _get_vaccination(app, vax_id).adverse_event_reported is False
+
+
+def test_admin_can_still_see_adverse_event_warning_despite_losing_report_permission(app, client, facility_id):
+    """The read-only warning (banner + inline 'AEFI Reported' indicator) must
+    stay visible to admin even though admin can no longer submit a new
+    report - these are two different permissions and must not be conflated."""
+    child_id = _make_child(app, facility_id)
+    vaccine_id = _make_vaccine(app)
+    apt_id = _make_appointment(app, child_id, vaccine_id, status='completed')
+    vax_id = _make_completed_vaccination(app, child_id, vaccine_id, apt_id, facility_id)
+    with app.app_context():
+        vax = Vaccination.query.get(vax_id)
+        vax.adverse_event_reported = True
+        vax.adverse_event_severity = 'severe'
+        vax.adverse_event_description = 'Anaphylaxis observed.'
+        vax.adverse_event_date = date.today()
+        _db.session.commit()
+
+    login_as(client, 'admin', facility_id)
+    resp = client.get(f'/children/{child_id}')
+
+    assert resp.status_code == 200
+    assert b'Prior Adverse Event(s) on Record' in resp.data
+    assert b'AEFI Reported' in resp.data
+    # And confirm the reporting button itself is NOT offered to admin.
+    assert b'openAdverseEvent(' not in resp.data
+
+
+def test_officer_can_still_report_and_view_adverse_events(app, client, facility_id):
+    """immunisation_officer's access is unchanged by this permission move."""
+    child_id = _make_child(app, facility_id)
+    vaccine_id = _make_vaccine(app)
+    apt_id = _make_appointment(app, child_id, vaccine_id, status='completed')
+    vax_id = _make_completed_vaccination(app, child_id, vaccine_id, apt_id, facility_id)
+
+    login_as(client, 'immunisation_officer', facility_id)
+    resp = client.post(f'/vaccinations/{vax_id}/adverse-event',
+                        data={'severity': 'moderate', 'description': 'Localized swelling.'})
+    assert resp.status_code == 302
+    assert _get_vaccination(app, vax_id).adverse_event_reported is True
+
+    resp = client.get(f'/children/{child_id}')
+    assert resp.status_code == 200
+    assert b'Prior Adverse Event(s) on Record' in resp.data
+    assert b'AEFI Reported' in resp.data
 
 
 def test_adverse_event_banner_condition_detectable_by_query(app, facility_id):
