@@ -342,3 +342,46 @@ def test_batch_search_requires_admin(client, facility_id):
     resp = client.get('/reports/batch-search?batch=LOT-777')
 
     assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Defer button visibility must match the route's actual permission
+# (POST /appointments/<id>/defer is @require_role('immunisation_officer', 'admin'))
+# ---------------------------------------------------------------------------
+def test_clerk_does_not_see_defer_button_on_child_page(app, client, facility_id):
+    child_id = _make_child(app, facility_id)
+    vaccine_id = _make_vaccine(app)
+    _make_appointment(app, child_id, vaccine_id, status='pending')
+
+    login_as(client, 'data_entry_clerk', facility_id)
+    resp = client.get(f'/children/{child_id}')
+
+    assert resp.status_code == 200
+    assert b'openDefer(' not in resp.data
+    assert b'Confirm Defer' not in resp.data
+
+
+def test_officer_sees_defer_button_on_child_page(app, client, facility_id):
+    child_id = _make_child(app, facility_id)
+    vaccine_id = _make_vaccine(app)
+    _make_appointment(app, child_id, vaccine_id, status='pending')
+
+    login_as(client, 'immunisation_officer', facility_id)
+    resp = client.get(f'/children/{child_id}')
+
+    assert resp.status_code == 200
+    assert b'openDefer(' in resp.data
+
+
+def test_clerk_direct_post_to_defer_route_still_returns_403(app, client, facility_id):
+    """Regression check: the backend permission itself was already correct -
+    only a stale button-visibility condition would have been the bug."""
+    child_id = _make_child(app, facility_id)
+    vaccine_id = _make_vaccine(app)
+    apt_id = _make_appointment(app, child_id, vaccine_id, status='pending')
+
+    login_as(client, 'data_entry_clerk', facility_id)
+    resp = client.post(f'/appointments/{apt_id}/defer', data={'deferral_reason': 'Test'})
+
+    assert resp.status_code == 403
+    assert _get_appointment(app, apt_id).status == 'pending'

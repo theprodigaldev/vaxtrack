@@ -41,7 +41,7 @@
 
     /* Layout */
     --sidebar-w:  240px;
-    --sidebar-bg: #1f1d1de3;
+    --sidebar-bg: #000000;
 
     /* Shape */
     --radius-sm: 6px;
@@ -208,7 +208,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
 
 .sidebar-brand {
     padding: 1.2rem 1.1rem 0.9rem;
-    border-bottom: 1px solid rgba(255,255,255,.07);
+    border-bottom: 1px solid #121212;
     flex-shrink: 0;
 }
 .sidebar-brand h2 {
@@ -229,9 +229,9 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
     letter-spacing: .5px;
     text-transform: uppercase;
     border-radius: 20px;
-    background: rgba(20,184,166,.15);
+    background: #031c19;
     color: var(--teal-400);
-    border: 1px solid rgba(20,184,166,.2);
+    border: 1px solid #042521;
 }
 
 /* Nav scrollable, no visible scrollbar */
@@ -249,7 +249,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
     font-weight: 600;
     letter-spacing: .8px;
     text-transform: uppercase;
-    color: rgba(255,255,255,.28);
+    color: #474747;
     padding: .85rem .65rem .25rem;
 }
 .sidebar nav a {
@@ -257,7 +257,7 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
     align-items: center;
     gap: .6rem;
     padding: .52rem .65rem;
-    color: rgba(255,255,255,.55);
+    color: #8c8c8c;
     font-size: .845rem;
     font-weight: 500;
     border-radius: var(--radius-sm);
@@ -274,18 +274,18 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
 }
 .sidebar nav a .nav-icon .feather { width: 14px; height: 14px; }
 .sidebar nav a:hover {
-    background: rgba(255,255,255,.07);
-    color: rgba(255,255,255,.88);
+    background: #121212;
+    color: #e0e0e0;
 }
 .sidebar nav a.active {
-    background: rgba(20,184,166,.13);
+    background: #031816;
     color: var(--teal-400);
     font-weight: 600;
 }
 
 .sidebar-footer {
     padding: .75rem .85rem .95rem;
-    border-top: 1px solid rgba(255,255,255,.07);
+    border-top: 1px solid #121212;
     flex-shrink: 0;
 }
 .sidebar-user {
@@ -302,27 +302,27 @@ body.sidebar-collapsed #sidebar-strip { display: block; }
     font-size: .8rem; font-weight: 700; color: #fff; flex-shrink: 0;
 }
 .sidebar-name {
-    font-size: .78rem; font-weight: 600; color: rgba(255,255,255,.82);
+    font-size: .78rem; font-weight: 600; color: #d1d1d1;
     line-height: 1.25; overflow: hidden; flex: 1; min-width: 0;
 }
 .sidebar-name span {
     display: block; font-size: .68rem; font-weight: 400;
-    color: rgba(255,255,255,.32); margin-top: 1px;
+    color: #525252; margin-top: 1px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .btn-logout {
     width: 100%;
     padding: .4rem;
-    background: rgba(255,255,255,.06);
-    border: 1px solid rgba(255,255,255,.1);
+    background: #0f0f0f;
+    border: 1px solid #1a1a1a;
     border-radius: var(--radius-sm);
-    color: rgba(255,255,255,.45);
+    color: #737373;
     font-size: .78rem;
     font-weight: 500;
     cursor: pointer;
     transition: background var(--transition), color var(--transition);
 }
-.btn-logout:hover { background: rgba(255,255,255,.12); color: #fff; }
+.btn-logout:hover { background: #1f1f1f; color: #fff; }
 
 /* Main content */
 .main-content {
