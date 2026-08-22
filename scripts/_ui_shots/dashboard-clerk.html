@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard VaxTrack</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="file:///C:/Users/HomePC/Documents/FINAL%20YEAR%20PROJECT/CURSOR/vaxtrack/app/static/style.css">
+    
+</head>
+<body class="role-data_entry_clerk">
+
+
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay"><div class="spinner"></div></div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Custom confirm dialog -->
+<div class="modal-backdrop confirm-dialog" id="confirm-dialog">
+    <div class="modal">
+        <div class="modal-body" style="padding:1.75rem 1.4rem 0; text-align:center;">
+            <div class="confirm-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none"
+                     stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </div>
+            <h3 id="confirm-title" style="margin-top:.5rem;">Confirm Action</h3>
+            <p id="confirm-message" style="margin-top:.4rem; color:var(--slate-500); font-size:.875rem;"></p>
+        </div>
+        <div class="modal-footer" style="justify-content:center; gap:.6rem; padding-top:1rem;">
+            <button class="btn btn-secondary" id="confirm-no" style="min-width:90px;">Cancel</button>
+            <button class="btn btn-danger" id="confirm-yes" style="min-width:90px;">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="sidebar-backdrop"></div>
+<div id="sidebar-strip"></div>
+<div class="wrapper">
+    <!-- ── Sidebar ─────────────────────────────────────── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--clinic)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                     style="flex-shrink:0;">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+                VaxTrack
+            </h2>
+            <span class="role-pill">data entry clerk</span>
+        </div>
+
+        <nav>
+            <div class="nav-section">Main</div>
+            <a href="/dashboard">
+                <span class="nav-icon"><i data-feather="home"></i></span> Dashboard
+            </a>
+            <a href="/children/search">
+                <span class="nav-icon"><i data-feather="search"></i></span> Search Children
+            </a>
+
+            
+            <div class="nav-section">Registration</div>
+            <a href="/children">
+                <span class="nav-icon"><i data-feather="user-plus"></i></span> Register Child
+            </a>
+            <a href="/rfid/lookup">
+                <span class="nav-icon"><i data-feather="credit-card"></i></span> Card Lookup
+            </a>
+            
+
+            
+
+            
+
+            <div class="nav-section">Account</div>
+            <a href="/change-password">
+                <span class="nav-icon"><i data-feather="lock"></i></span> Change Password
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <form method="POST" action="/logout" class="no-loading">
+                <button type="submit" class="btn-logout">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         style="vertical-align:middle; margin-right:.35rem;">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                    Sign Out
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <!-- ── Content shell ──────────────────────────────── -->
+    <div class="content-shell">
+
+        <!-- Top bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle navigation">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="3" y1="6"  x2="21" y2="6"/>
+                        <line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                </svg>
+                VaxTrack
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-user">
+                    <div class="topbar-avatar">A</div>
+                    <div>
+                        <div class="topbar-name">Aisha Mohammed</div>
+                        <div class="topbar-role">Data Entry Clerk</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main content -->
+        <main class="main-content">
+            
+            
+            
+
+            
+<div class="page-header">
+    <div>
+        <h2>Good day, Aisha</h2>
+        <p>Data Entry Clerk</p>
+    </div>
+</div>
+
+<!-- Live summary stats -->
+<div class="stats-row">
+    <div class="stat-card has-icon teal">
+        <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--teal-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        </div>
+        <div class="stat-text">
+            <div class="number" data-count="4">4</div>
+            <div class="label">Enrolled Children</div>
+        </div>
+    </div>
+    <div class="stat-card has-icon ink">
+        <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+        </div>
+        <div class="stat-text">
+            <div class="number" data-count="0">0</div>
+            <div class="label">Vaccinations Given</div>
+        </div>
+    </div>
+    <div class="stat-card has-icon amber">
+        <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--amber-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+        </div>
+        <div class="stat-text">
+            <div class="number" data-count="0">0</div>
+            <div class="label">Due Today</div>
+        </div>
+    </div>
+    <div class="stat-card has-icon rose">
+        <div class="stat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--rose-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+        </div>
+        <div class="stat-text">
+            <div class="number" data-count="0">0</div>
+            <div class="label">Overdue</div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="card">
+    <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        RFID Scan Feed
+        <span style="font-size:.73rem; font-weight:400; color:var(--slate-400); margin-left:.25rem;">(auto-updates on card scan)</span>
+    </h3>
+    <div id="scan-result" class="scan-placeholder">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+             style="margin-bottom:.4rem; display:block; margin-left:auto; margin-right:auto;">
+            <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        Waiting for card scan&hellip;
+    </div>
+</div>
+
+
+
+
+<!-- Role-specific quick actions -->
+
+<div class="card card-accent">
+    <h3>Quick Actions</h3>
+    <div class="actions-row">
+        <a href="/children" class="btn btn-primary">Register Child</a>
+        <a href="/children/search" class="btn btn-secondary">Search Children</a>
+        <a href="/rfid/lookup" class="btn btn-secondary">Card Lookup</a>
+    </div>
+    <p style="font-size:.78rem; color:var(--slate-400); margin-top:.85rem; line-height:1.7;">
+        Scan a child's RFID card on the reader. Their record will appear above automatically.
+        Use <strong>Card Lookup</strong> to manually enter a UID if no reader is connected.
+    </p>
+</div>
+
+
+
+
+        </main>
+    </div><!-- /content-shell -->
+</div><!-- /wrapper -->
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+<script src="/static/main.js"></script>
+<script>
+    if (typeof feather !== 'undefined') feather.replace({ 'stroke-width': 2 });
+</script>
+
+
+<script>
+var lastScanHash = null;
+
+async function pollScan() {
+    try {
+        var res = await fetch('/scan/latest', { signal: AbortSignal.timeout(2500) });
+        if (!res.ok) return;
+        var data = await res.json();
+        if (data.status === 'found') {
+            var hash = data.child.child_id + ':' + data.child.first_name;
+            if (hash !== lastScanHash) {
+                lastScanHash = hash;
+                renderScanResult(data);
+            }
+        }
+    } catch(e) {}
+}
+
+function renderScanResult(data) {
+    var c = data.child, s = data.summary;
+    var el = document.getElementById('scan-result');
+    el.style.textAlign = 'left';
+    el.style.color = 'inherit';
+    el.style.borderColor = 'var(--teal-400)';
+    el.style.borderStyle = 'solid';
+
+    el.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem;">' +
+            '<div>' +
+                '<div style="font-size:1rem;font-weight:700;color:var(--slate-900);">' + c.first_name + ' ' + c.last_name + '</div>' +
+                '<div style="font-size:.77rem;color:var(--slate-500);margin-top:.1rem;">' +
+                    'DOB: ' + c.date_of_birth + ' &middot; ' + c.gender + ' &middot; Guardian: ' + c.guardian_name +
+                '</div>' +
+            '</div>' +
+            '<a href="/children/' + c.child_id + '" class="btn btn-primary btn-sm">View Record</a>' +
+        '</div>' +
+        '<div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap;">' +
+            _miniStat(s.completed, 'Done', 'var(--emerald-600)') +
+            _miniStat(s.overdue,   'Overdue', 'var(--rose-600)') +
+            _miniStat(s.due_today, 'Today',  'var(--amber-600)') +
+            _miniStat(s.upcoming,  'Upcoming','var(--teal-600)') +
+        '</div>';
+}
+
+function _miniStat(val, label, color) {
+    return '<div style="flex:1;min-width:70px;background:var(--slate-50);border:1px solid var(--slate-200);' +
+           'border-radius:8px;padding:.55rem .8rem;">' +
+               '<div style="font-size:1.2rem;font-weight:700;color:' + color + ';">' + val + '</div>' +
+               '<div style="font-size:.69rem;color:var(--slate-500);font-weight:500;">' + label + '</div>' +
+           '</div>';
+}
+
+setInterval(pollScan, 2500);
+
+
+// Redirect to registration pre-filled with UID when an unregistered card is
+// scanned. Only active on this dashboard page, not on every page, so clerks
+// mid-task elsewhere are never unexpectedly redirected.
+async function pollUnregistered() {
+    try {
+        var res = await fetch('/scan/latest-unregistered', { signal: AbortSignal.timeout(2500) });
+        if (!res.ok) return;
+        var data = await res.json();
+        if (data.status === 'unknown' && data.uid_hex) {
+            window.location.href = '/children?scanned_uid=' + encodeURIComponent(data.uid_hex);
+        }
+    } catch(e) {}
+}
+setInterval(pollUnregistered, 2500);
+
+</script>
+
+
+
+</body>
+</html>

@@ -28,17 +28,17 @@
 <!-- Adverse event history: information for the clinician to review, not an
      instruction or a block on recording this new dose. -->
 {% if adverse_events %}
-<div class="card" style="border-color:var(--amber-500); background:#fffbeb;">
-    <h3 style="margin-top:0; color:#92400e;">
+<div class="card card-notice">
+    <h3>
         <i data-feather="alert-triangle" class="feather-lg"></i> Prior Adverse Event(s) on Record
     </h3>
-    <ul style="margin:0; padding-left:1.25rem; font-size:.875rem; color:#92400e;">
+    <ul>
         {% for ae in adverse_events %}
         {% set v = vaccines.get(ae.vaccine_id) %}
         <li style="margin-bottom:.35rem;">
             <strong>{{ v.antigen_name if v else 'Unknown vaccine' }}</strong>
             on {{ ae.adverse_event_date.strftime('%d %B %Y') if ae.adverse_event_date else ae.date_given.strftime('%d %B %Y') }},
-            severity <span class="badge badge-{% if ae.adverse_event_severity == 'severe' %}danger{% elif ae.adverse_event_severity == 'moderate' %}warning{% else %}secondary{% endif %}">{{ ae.adverse_event_severity | title }}</span>
+            severity <span class="badge {% if ae.adverse_event_severity == 'severe' %}badge-severity-severe{% elif ae.adverse_event_severity == 'moderate' %}badge-severity-moderate{% else %}badge-secondary{% endif %}">{{ ae.adverse_event_severity | title }}</span>
             {% if ae.adverse_event_description %}: {{ ae.adverse_event_description }}{% endif %}
         </li>
         {% endfor %}

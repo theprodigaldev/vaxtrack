@@ -4,7 +4,7 @@
 {% block content %}
 <h2>Audit Log</h2>
 
-<div class="card" style="border: 2px dashed var(--amber-500); background: #fffbf0;">
+<div class="card card-notice">
     <h3 style="margin-top:0;">Manual Trigger - for testing only</h3>
     <p style="font-size:.8rem; color:var(--slate-500); margin-bottom:.9rem; line-height:1.6;">
         This sends real notifications to guardians of any matching appointments, not a sandboxed test.
@@ -78,7 +78,7 @@
             <td>{{ log.log_id }}</td>
             <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             <td>{{ log.user.username if log.user else 'System' }}</td>
-            <td><span class="badge badge-{% if log.action_type == 'INSERT' %}success{% elif log.action_type == 'UPDATE' %}warning{% else %}danger{% endif %}">{{ log.action_type }}</span></td>
+            <td><span class="badge badge-{% if log.action_type == 'INSERT' %}primary{% elif log.action_type == 'UPDATE' %}secondary{% else %}severity-severe{% endif %}">{{ log.action_type }}</span></td>
             <td>{{ log.table_affected }}</td>
             <td>{{ log.record_id }}</td>
             <td style="font-size: 0.8rem; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">

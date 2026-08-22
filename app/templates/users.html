@@ -19,8 +19,8 @@
             <td>{{ u.role | replace('_', ' ') | title }}</td>
             <td>{{ u.facility.facility_name if u.facility else '' }}</td>
             <td>
-                {% if u.is_active %}<span class="badge badge-success">Active</span>
-                {% else %}<span class="badge badge-danger">Locked</span>{% endif %}
+                {% if u.is_active %}<span class="badge badge-primary">Active</span>
+                {% else %}<span class="badge badge-secondary">Locked</span>{% endif %}
             </td>
             <td style="display:flex; gap:.4rem; flex-wrap:wrap; align-items:center;">
                 <form method="POST" action="{{ url_for('auth.toggle_user', user_id=u.user_id) }}" style="display:inline;" class="no-loading">

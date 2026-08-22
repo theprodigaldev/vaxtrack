@@ -47,12 +47,11 @@
             </div>
             <div class="form-group">
                 <label for="guardian_phone_number">Guardian Phone</label>
-                <div style="display:flex; align-items:center; border:1.5px solid var(--slate-200); border-radius:var(--radius-sm); overflow:hidden; background:#fff;">
-                    <span style="padding:.48rem .7rem; background:var(--slate-50); color:var(--slate-600); font-size:.875rem; white-space:nowrap; border-right:1.5px solid var(--slate-200);">+234</span>
+                <div class="phone-input-wrap">
+                    <span class="phone-prefix">+234</span>
                     <input type="tel" id="guardian_phone_number" name="guardian_phone_number" required
                            placeholder="8012345678" maxlength="10"
-                           value="{{ form_data.get('guardian_phone_number', '') if form_data else '' }}"
-                           style="border:none; flex:1; padding:.48rem .7rem; font-size:.875rem; outline:none; background:transparent;">
+                           value="{{ form_data.get('guardian_phone_number', '') if form_data else '' }}">
                 </div>
             </div>
         </div>
@@ -80,12 +79,11 @@
                     RFID Card UID
                     <span style="font-size:.75rem; color:var(--slate-400);">(optional: scan card or type manually)</span>
                 </label>
-                <input type="text" id="uid_hex" name="uid_hex"
+                <input type="text" id="uid_hex" name="uid_hex" class="uid-input"
                        value="{{ form_data.get('uid_hex', '') if form_data else scanned_uid }}"
                        placeholder="e.g. A1B2C3D4"
                        data-uppercase
-                       autocomplete="off"
-                       style="font-family:'Courier New',monospace; letter-spacing:2px; text-transform:uppercase;">
+                       autocomplete="off">
                 <span id="uid-scan-hint" style="font-size:.74rem; color:var(--teal-600); margin-top:.3rem; display:none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
@@ -96,7 +94,7 @@
                 </span>
             </div>
         </div>
-        <div style="display:flex; gap:.5rem; margin-top:.5rem;">
+        <div class="form-actions">
             <button type="submit" class="btn btn-primary">Register Child</button>
             <a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary">Cancel</a>
         </div>

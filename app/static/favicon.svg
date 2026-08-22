@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#0d1b2a"/>
+  <rect width="32" height="32" rx="6" fill="#1E2F2E"/>
   <polyline
     points="29 16 24 16 20 28 12 4 8 16 3 16"
     fill="none"
-    stroke="#2dd4bf"
+    stroke="#1A6B66"
     stroke-width="2.8"
     stroke-linecap="round"
     stroke-linejoin="round"/>

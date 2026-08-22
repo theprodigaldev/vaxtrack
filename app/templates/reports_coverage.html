@@ -3,12 +3,14 @@
 
 {% block content %}
 <div class="page-header">
-    <h2><i data-feather="bar-chart-2"></i> Antigen Coverage Report</h2>
-    <p>Based on {{ total_children }} enrolled children across all facilities.</p>
+    <div>
+        <h2><i data-feather="bar-chart-2" class="feather-lg" style="color:var(--teal-500);"></i> Antigen Coverage Report</h2>
+        <p>Based on {{ total_children }} enrolled children across all facilities.</p>
+    </div>
+    <a href="{{ url_for('reports.coverage_report', export='csv') }}" class="btn btn-secondary btn-sm">
+        <i data-feather="download"></i> Export CSV
+    </a>
 </div>
-<a href="{{ url_for('reports.coverage_report', export='csv') }}" class="btn btn-secondary btn-sm" style="margin-bottom:1.1rem;">
-    <i data-feather="download"></i> Export CSV
-</a>
 
 <div class="card">
     <div class="table-wrap">

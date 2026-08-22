@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
     <div>
-        <h2><i data-feather="alert-triangle" class="feather-lg" style="color:var(--rose-500);"></i> Defaulters Report</h2>
+        <h2><i data-feather="alert-triangle" class="feather-lg" style="color:var(--status-overdue);"></i> Defaulters Report</h2>
         <p>Children with overdue pending appointments.</p>
     </div>
     <a href="{{ url_for('reports.defaulters_report', export='csv') }}" class="btn btn-secondary btn-sm">
@@ -35,7 +35,7 @@
     {% else %}
     <div style="text-align:center; padding:2rem;">
         <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none"
-             stroke="var(--emerald-400)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+             stroke="var(--emerald-500)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
              style="margin-bottom:.75rem;">
             <polyline points="20 6 9 17 4 12"/>
         </svg>

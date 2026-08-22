@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}VaxTrack{% endblock %}</title>
-    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <title>Search Children VaxTrack</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    {% block head %}{% endblock %}
+    <link rel="stylesheet" href="file:///C:/Users/HomePC/Documents/FINAL%20YEAR%20PROJECT/CURSOR/vaxtrack/app/static/style.css">
+    
 </head>
-<body{% if session.get('role') %} class="role-{{ session.get('role') }}"{% endif %}>
+<body class="role-data_entry_clerk">
 
-{% if session.get('user_id') %}
+
 
 <!-- Loading overlay -->
 <div class="loading-overlay" id="loading-overlay"><div class="spinner"></div></div>
@@ -55,66 +55,40 @@
                 </svg>
                 VaxTrack
             </h2>
-            <span class="role-pill">{{ session.get('role', '') | replace('_', ' ') }}</span>
+            <span class="role-pill">data entry clerk</span>
         </div>
 
         <nav>
             <div class="nav-section">Main</div>
-            <a href="{{ url_for('auth.dashboard') }}">
+            <a href="/dashboard">
                 <span class="nav-icon"><i data-feather="home"></i></span> Dashboard
             </a>
-            <a href="{{ url_for('patients.search_children') }}">
+            <a href="/children/search">
                 <span class="nav-icon"><i data-feather="search"></i></span> Search Children
             </a>
 
-            {% if session.get('role') in ['data_entry_clerk'] %}
+            
             <div class="nav-section">Registration</div>
-            <a href="{{ url_for('patients.register_child') }}">
+            <a href="/children">
                 <span class="nav-icon"><i data-feather="user-plus"></i></span> Register Child
             </a>
-            <a href="{{ url_for('patients.rfid_lookup') }}">
+            <a href="/rfid/lookup">
                 <span class="nav-icon"><i data-feather="credit-card"></i></span> Card Lookup
             </a>
-            {% endif %}
+            
 
-            {% if session.get('role') in ['immunisation_officer'] %}
-            <div class="nav-section">Clinical</div>
-            <a href="{{ url_for('vaccinations.vaccination_form') }}">
-                <span class="nav-icon"><i data-feather="plus-circle"></i></span> Record Vaccination
-            </a>
-            {% endif %}
+            
 
-            {% if session.get('role') == 'admin' %}
-            <div class="nav-section">Administration</div>
-            <a href="{{ url_for('auth.list_users') }}">
-                <span class="nav-icon"><i data-feather="users"></i></span> Manage Users
-            </a>
-            <a href="{{ url_for('auth.audit_log') }}">
-                <span class="nav-icon"><i data-feather="clipboard"></i></span> Audit Log
-            </a>
-            <div class="nav-section">Reports</div>
-            <a href="{{ url_for('reports.coverage_report') }}">
-                <span class="nav-icon"><i data-feather="bar-chart-2"></i></span> Coverage
-            </a>
-            <a href="{{ url_for('reports.defaulters_report') }}">
-                <span class="nav-icon"><i data-feather="alert-triangle"></i></span> Defaulters
-            </a>
-            <a href="{{ url_for('reports.facility_report') }}">
-                <span class="nav-icon"><i data-feather="map-pin"></i></span> Facility
-            </a>
-            <a href="{{ url_for('reports.batch_search') }}">
-                <span class="nav-icon"><i data-feather="search"></i></span> Batch Search
-            </a>
-            {% endif %}
+            
 
             <div class="nav-section">Account</div>
-            <a href="{{ url_for('auth.change_password') }}">
+            <a href="/change-password">
                 <span class="nav-icon"><i data-feather="lock"></i></span> Change Password
             </a>
         </nav>
 
         <div class="sidebar-footer">
-            <form method="POST" action="{{ url_for('auth.logout') }}" class="no-loading">
+            <form method="POST" action="/logout" class="no-loading">
                 <button type="submit" class="btn-logout">
                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -152,10 +126,10 @@
             </div>
             <div class="topbar-right">
                 <div class="topbar-user">
-                    <div class="topbar-avatar">{{ session.get('full_name', 'U')[0] }}</div>
+                    <div class="topbar-avatar">A</div>
                     <div>
-                        <div class="topbar-name">{{ session.get('full_name', '') }}</div>
-                        <div class="topbar-role">{{ session.get('role', '') | replace('_', ' ') | title }}</div>
+                        <div class="topbar-name">Aisha Mohammed</div>
+                        <div class="topbar-role">Data Entry Clerk</div>
                     </div>
                 </div>
             </div>
@@ -163,41 +137,100 @@
 
         <!-- Main content -->
         <main class="main-content">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-            {% endwith %}
+            
+            
+            
 
-            {% block content %}{% endblock %}
+            
+<div class="page-header">
+    <h2>Search Children</h2>
+    <p>Search by name, guardian, phone number, or RFID card UID.</p>
+</div>
+
+<div class="card">
+    <form method="GET" action="/children/search" class="no-loading" style="display:flex; gap:.5rem;">
+        <div class="search-bar" style="flex:1;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                 stroke="var(--slate-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" name="q" value="a" placeholder="Name, guardian, phone or RFID UID…" autofocus>
+        </div>
+        <button type="submit" class="btn btn-primary">Search</button>
+        <a href="/children/search" class="btn btn-secondary">Clear</a>
+    </form>
+</div>
+
+
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
+        <h3 style="margin-bottom:0;">Results <span style="font-size:.8rem; font-weight:400; color:var(--slate-400);">(4 found)</span></h3>
+        <input type="text" id="table-filter" class="input-filter" placeholder="Filter results…">
+    </div>
+    <div class="table-wrap" data-filterable>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Name</th><th>DOB</th><th>Gender</th><th>Guardian</th><th>Phone</th><th></th></tr>
+        </thead>
+        <tbody>
+        
+        <tr data-href="/children/1">
+            <td><span style="font-size:.78rem; color:var(--slate-400);">#1</span></td>
+            <td style="font-weight:600;">Amina Bello</td>
+            <td>08 Jan 2024</td>
+            <td>female</td>
+            <td>Bello Guardian</td>
+            <td>+2348010000001</td>
+            <td><a href="/children/1" class="btn btn-primary btn-sm">View</a></td>
+        </tr>
+        
+        <tr data-href="/children/2">
+            <td><span style="font-size:.78rem; color:var(--slate-400);">#2</span></td>
+            <td style="font-weight:600;">Chinedu Okafor</td>
+            <td>08 Feb 2024</td>
+            <td>male</td>
+            <td>Okafor Guardian</td>
+            <td>+2348010000002</td>
+            <td><a href="/children/2" class="btn btn-primary btn-sm">View</a></td>
+        </tr>
+        
+        <tr data-href="/children/3">
+            <td><span style="font-size:.78rem; color:var(--slate-400);">#3</span></td>
+            <td style="font-weight:600;">Fatima Yusuf</td>
+            <td>08 Mar 2024</td>
+            <td>female</td>
+            <td>Yusuf Guardian</td>
+            <td>+2348010000003</td>
+            <td><a href="/children/3" class="btn btn-primary btn-sm">View</a></td>
+        </tr>
+        
+        <tr data-href="/children/4">
+            <td><span style="font-size:.78rem; color:var(--slate-400);">#4</span></td>
+            <td style="font-weight:600;">Tunde Adeyemi</td>
+            <td>08 Apr 2024</td>
+            <td>male</td>
+            <td>Adeyemi Guardian</td>
+            <td>+2348010000004</td>
+            <td><a href="/children/4" class="btn btn-primary btn-sm">View</a></td>
+        </tr>
+        
+        </tbody>
+    </table>
+    </div>
+</div>
+
+
         </main>
     </div><!-- /content-shell -->
 </div><!-- /wrapper -->
 
-{% else %}
 
-<!-- Public (login) page -->
-<div id="toast-container"></div>
-<div class="public-shell">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-    {% endwith %}
-    {% block public_content %}{% endblock %}
-</div>
-
-{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-<script src="{{ url_for('static', filename='main.js') }}"></script>
+<script src="/static/main.js"></script>
 <script>
     if (typeof feather !== 'undefined') feather.replace({ 'stroke-width': 2 });
 </script>
-{% block scripts %}{% endblock %}
+
 </body>
 </html>

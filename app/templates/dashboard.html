@@ -25,10 +25,10 @@
             <div class="label">Enrolled Children</div>
         </div>
     </div>
-    <div class="stat-card has-icon emerald">
+    <div class="stat-card has-icon ink">
         <div class="stat-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                 stroke="var(--emerald-600)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                 stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
             </svg>
         </div>
@@ -78,9 +78,7 @@
         RFID Scan Feed
         <span style="font-size:.73rem; font-weight:400; color:var(--slate-400); margin-left:.25rem;">(auto-updates on card scan)</span>
     </h3>
-    <div id="scan-result"
-         style="min-height:80px; border:1.5px dashed var(--slate-300); border-radius:var(--radius);
-                padding:1.25rem; text-align:center; color:var(--slate-400); font-size:.845rem; transition:border-color .3s;">
+    <div id="scan-result" class="scan-placeholder">
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
              style="margin-bottom:.4rem; display:block; margin-left:auto; margin-right:auto;">
@@ -103,9 +101,7 @@
         Checked-In Queue
         <span style="font-size:.73rem; font-weight:400; color:var(--slate-400); margin-left:.25rem;">(first-come, first-served)</span>
     </h3>
-    <input type="text" id="checkin-search" placeholder="Search by child or guardian name..."
-           style="width:100%; padding:.5rem .75rem; margin-bottom:.75rem; border:1px solid var(--slate-300);
-                  border-radius:var(--radius); font-size:.85rem; box-sizing:border-box;">
+    <input type="text" id="checkin-search" class="queue-search" placeholder="Search by child or guardian name...">
     <div id="checkin-queue">
         <div style="text-align:center; color:var(--slate-400); font-size:.845rem; padding:1rem;">Loading queue&hellip;</div>
     </div>
@@ -116,7 +112,7 @@
 {% if role == 'data_entry_clerk' %}
 <div class="card card-accent">
     <h3>Quick Actions</h3>
-    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+    <div class="actions-row">
         <a href="{{ url_for('patients.register_child') }}" class="btn btn-primary">Register Child</a>
         <a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary">Search Children</a>
         <a href="{{ url_for('patients.rfid_lookup') }}" class="btn btn-secondary">Card Lookup</a>
@@ -130,7 +126,7 @@
 {% elif role == 'immunisation_officer' %}
 <div class="card card-accent">
     <h3>Quick Actions</h3>
-    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+    <div class="actions-row">
         <a href="{{ url_for('vaccinations.vaccination_form') }}" class="btn btn-primary">Record Vaccination</a>
         <a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary">Search Children</a>
         <a href="{{ url_for('patients.rfid_lookup') }}" class="btn btn-secondary">
@@ -147,7 +143,7 @@
 {% elif role == 'admin' %}
 <div class="card card-accent">
     <h3>Quick Actions</h3>
-    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+    <div class="actions-row">
         <a href="{{ url_for('patients.register_child') }}" class="btn btn-primary">Register Child</a>
         <a href="{{ url_for('auth.list_users') }}" class="btn btn-secondary">Manage Users</a>
         <a href="{{ url_for('reports.coverage_report') }}" class="btn btn-secondary">Coverage Report</a>

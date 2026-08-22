@@ -29,12 +29,11 @@
             </div>
             <div class="form-group">
                 <label for="guardian_phone_number">Guardian Phone</label>
-                <div style="display:flex; align-items:center; border:1.5px solid var(--slate-200); border-radius:var(--radius-sm); overflow:hidden; background:#fff;">
-                    <span style="padding:.48rem .7rem; background:var(--slate-50); color:var(--slate-600); font-size:.875rem; white-space:nowrap; border-right:1.5px solid var(--slate-200);">+234</span>
+                <div class="phone-input-wrap">
+                    <span class="phone-prefix">+234</span>
                     <input type="tel" id="guardian_phone_number" name="guardian_phone_number" required
                            value="{{ child.guardian_phone | replace('+234', '') }}"
-                           maxlength="10"
-                           style="border:none; flex:1; padding:.48rem .7rem; font-size:.875rem; outline:none; background:transparent;">
+                           maxlength="10">
                 </div>
                 <input type="hidden" id="guardian_phone" name="guardian_phone" value="{{ child.guardian_phone }}">
             </div>
@@ -43,7 +42,7 @@
             <label for="guardian_email">Guardian Email <span style="font-size:.75rem; color:var(--slate-400);">(optional)</span></label>
             <input type="email" id="guardian_email" name="guardian_email" value="{{ child.guardian_email or '' }}">
         </div>
-        <div style="display:flex; gap:.5rem; margin-top:.5rem;">
+        <div class="form-actions">
             <button type="submit" class="btn btn-primary">Save Changes</button>
             <a href="{{ url_for('patients.view_child', child_id=child.child_id) }}" class="btn btn-secondary">Cancel</a>
         </div>
