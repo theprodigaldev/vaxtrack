@@ -8,19 +8,22 @@
 </div>
 
 <div class="card">
-    <form method="GET" action="{{ url_for('patients.search_children') }}" class="no-loading search-form">
+    <form method="GET" action="{{ url_for('patients.search_children') }}" class="no-loading search-form"
+          data-search-json-url="{{ url_for('patients.search_children_json') }}"
+          data-child-url-template="{{ url_for('patients.view_child', child_id=0) }}">
         <div class="search-bar" style="flex:1;">
             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
                  stroke="var(--slate-400)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input type="text" name="q" value="{{ query }}" placeholder="Name, guardian, phone or RFID UID…" autofocus>
+            <input type="text" name="q" id="search-input" value="{{ query }}" placeholder="Name, guardian, phone or RFID UID…" autofocus autocomplete="off">
         </div>
         <button type="submit" class="btn btn-primary">Search</button>
         {% if query %}<a href="{{ url_for('patients.search_children') }}" class="btn btn-secondary">Clear</a>{% endif %}
     </form>
 </div>
 
+<div id="search-results">
 {% if children %}
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">
@@ -70,4 +73,116 @@
     <p style="color:var(--slate-400); font-size:.875rem;">Enter a search term above to find children.</p>
 </div>
 {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var form = document.querySelector('.search-form');
+    var input = document.getElementById('search-input');
+    var resultsContainer = document.getElementById('search-results');
+    if (!form || !input || !resultsContainer) return;
+
+    var searchJsonUrl = form.getAttribute('data-search-json-url');
+    // e.g. "/children/0" -> use as a template, swapping the trailing 0 for the real id
+    var childUrlTemplate = form.getAttribute('data-child-url-template');
+
+    function childUrl(childId) {
+        return childUrlTemplate.replace(/0$/, String(childId));
+    }
+
+    function escapeHtml(value) {
+        var div = document.createElement('div');
+        div.textContent = value == null ? '' : String(value);
+        return div.innerHTML;
+    }
+
+    function formatDob(iso) {
+        var parts = (iso || '').split('-');
+        if (parts.length !== 3) return escapeHtml(iso);
+        var d = new Date(Date.UTC(+parts[0], +parts[1] - 1, +parts[2]));
+        if (isNaN(d.getTime())) return escapeHtml(iso);
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+    }
+
+    function wireRows(container) {
+        container.querySelectorAll('tr[data-href]').forEach(function (row) {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', function () {
+                window.location.href = row.getAttribute('data-href');
+            });
+        });
+        var filterInput = container.querySelector('#table-filter');
+        if (filterInput) {
+            filterInput.addEventListener('input', function () {
+                var q = this.value.toLowerCase();
+                container.querySelectorAll('[data-filterable] tbody tr').forEach(function (row) {
+                    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+                });
+            });
+        }
+    }
+
+    function renderEmptyState(query) {
+        resultsContainer.innerHTML =
+            '<div class="card" style="text-align:center; padding:2.5rem;">' +
+            '<h3 style="color:var(--slate-500); font-weight:500;">No results for "' + escapeHtml(query) + '"</h3>' +
+            '<p style="color:var(--slate-400); font-size:.875rem; margin-top:.3rem;">Try a different name, phone number, or RFID UID.</p>' +
+            '</div>';
+    }
+
+    function renderResults(children, query) {
+        if (!children.length) {
+            renderEmptyState(query);
+            return;
+        }
+        var rows = children.map(function (c) {
+            return '<tr data-href="' + childUrl(c.child_id) + '">' +
+                '<td><span style="font-size:.78rem; color:var(--slate-400);">#' + c.child_id + '</span></td>' +
+                '<td style="font-weight:600;">' + escapeHtml(c.first_name) + ' ' + escapeHtml(c.last_name) + '</td>' +
+                '<td>' + formatDob(c.date_of_birth) + '</td>' +
+                '<td>' + escapeHtml(c.gender) + '</td>' +
+                '<td>' + escapeHtml(c.guardian_name) + '</td>' +
+                '<td>' + escapeHtml(c.guardian_phone) + '</td>' +
+                '<td><a href="' + childUrl(c.child_id) + '" class="btn btn-primary btn-sm">View</a></td>' +
+                '</tr>';
+        }).join('');
+
+        resultsContainer.innerHTML =
+            '<div class="card">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem;">' +
+            '<h3 style="margin-bottom:0;">Results <span style="font-size:.8rem; font-weight:400; color:var(--slate-400);">(' + children.length + ' found)</span></h3>' +
+            '<input type="text" id="table-filter" class="input-filter" placeholder="Filter results…">' +
+            '</div>' +
+            '<div class="table-wrap" data-filterable>' +
+            '<table><thead><tr><th>ID</th><th>Name</th><th>DOB</th><th>Gender</th><th>Guardian</th><th>Phone</th><th></th></tr></thead>' +
+            '<tbody>' + rows + '</tbody></table></div></div>';
+        wireRows(resultsContainer);
+    }
+
+    var debounceTimer = null;
+    var latestRequestId = 0;
+
+    input.addEventListener('input', function () {
+        var q = input.value.trim();
+        clearTimeout(debounceTimer);
+        if (q.length < 2) return;
+
+        debounceTimer = setTimeout(function () {
+            var requestId = ++latestRequestId;
+            fetch(searchJsonUrl + '?q=' + encodeURIComponent(q))
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (requestId !== latestRequestId) return; // a newer keystroke already superseded this
+                    renderResults(data, q);
+                })
+                .catch(function () { /* silently keep last known results on network error */ });
+        }, 300);
+    });
+    // Note: the initial server-rendered rows/filter (if any) are already wired
+    // by main.js on page load; wireRows() here only applies to content this
+    // script injects itself via renderResults().
+})();
+</script>
 {% endblock %}

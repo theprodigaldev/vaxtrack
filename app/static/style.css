@@ -8,14 +8,14 @@
 
 :root {
     /* Compact 6-token chrome */
-    --canvas:   #F0F2EF;
+    --canvas:   #FFFFFF;
     --surface:  #FAFBFA;
     --ink:      #1E2F2E;
-    --clinic:   #1A6B66;
-    --muted:    #5A6E6B;
+    --clinic:   #107F78;
+    --muted:    #415855;
     --line:     #CDD5D2;
 
-    --clinic-deep: #145753;
+    --clinic-deep: #0C645E;
     --clinic-soft: #E4EEEC;
     --focus-ring:  rgba(26, 107, 102, .28);
 
@@ -150,7 +150,7 @@ body.sidebar-collapsed .content-shell { margin-left: 0; }
     position: fixed;
     left: 0; top: 0;
     width: 18px; height: 100vh;
-    z-index: 201;
+    z-index: 150;
     cursor: e-resize;
     display: none;
 }
@@ -193,9 +193,14 @@ body.role-admin .topbar {
     display: flex;
     align-items: center;
     gap: .75rem;
-    color: var(--muted);
-    font-size: .8rem;
+    color: var(--ink);
+    font-size: .95rem;
     font-weight: 500;
+}
+.topbar-logo {
+    height: 26px;
+    width: auto;
+    display: block;
 }
 .topbar-right {
     display: flex;

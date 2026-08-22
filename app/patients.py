@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
-from flask import Blueprint, request, render_template, redirect, url_for, flash, session
+from flask import Blueprint, request, render_template, redirect, url_for, flash, session, jsonify
 
 from app import db
 from app.models import Child, RFIDTag, Appointment, Vaccine, MedicalNote, Facility, Vaccination
@@ -206,26 +206,50 @@ def view_child(child_id):
 # ---------------------------------------------------------------------------
 # Search children
 # ---------------------------------------------------------------------------
+def _search_children(q):
+    """Shared query logic for the search_children page and its JSON endpoint."""
+    if not q:
+        return []
+    uid_child_ids = [
+        tag.child_id for tag in
+        RFIDTag.query.filter(RFIDTag.uid_hex.ilike(f'%{q.upper()}%')).all()
+    ]
+    return Child.query.filter(
+        db.or_(
+            Child.first_name.ilike(f'%{q}%'),
+            Child.last_name.ilike(f'%{q}%'),
+            Child.guardian_name.ilike(f'%{q}%'),
+            Child.guardian_phone.ilike(f'%{q}%'),
+            Child.child_id.in_(uid_child_ids)
+        )
+    ).all()
+
+
 @patients_bp.route('/children/search')
 @login_required
 def search_children():
     q = request.args.get('q', '').strip()
-    children = []
-    if q:
-        uid_child_ids = [
-            tag.child_id for tag in
-            RFIDTag.query.filter(RFIDTag.uid_hex.ilike(f'%{q.upper()}%')).all()
-        ]
-        children = Child.query.filter(
-            db.or_(
-                Child.first_name.ilike(f'%{q}%'),
-                Child.last_name.ilike(f'%{q}%'),
-                Child.guardian_name.ilike(f'%{q}%'),
-                Child.guardian_phone.ilike(f'%{q}%'),
-                Child.child_id.in_(uid_child_ids)
-            )
-        ).all()
+    children = _search_children(q)
     return render_template('search_children.html', children=children, query=q)
+
+
+@patients_bp.route('/children/search.json')
+@login_required
+def search_children_json():
+    q = request.args.get('q', '').strip()
+    children = _search_children(q)
+    return jsonify([
+        {
+            'child_id': c.child_id,
+            'first_name': c.first_name,
+            'last_name': c.last_name,
+            'date_of_birth': c.date_of_birth.isoformat(),
+            'gender': c.gender,
+            'guardian_name': c.guardian_name,
+            'guardian_phone': c.guardian_phone,
+        }
+        for c in children
+    ])
 
 
 # ---------------------------------------------------------------------------
