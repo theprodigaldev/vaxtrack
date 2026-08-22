@@ -211,9 +211,10 @@ def list_users():
 @auth_bp.route('/users/create', methods=['GET', 'POST'])
 @require_role('admin')
 def create_user():
+    from app.models import Facility
+    facilities = Facility.query.all()
+
     if request.method == 'GET':
-        from app.models import Facility
-        facilities = Facility.query.all()
         return render_template('create_user.html', facilities=facilities)
 
     username = request.form.get('username', '').strip()
@@ -221,6 +222,17 @@ def create_user():
     full_name = request.form.get('full_name', '').strip()
     role = request.form.get('role', '')
     facility_id = request.form.get('facility_id', type=int)
+
+    valid_roles = ('admin', 'immunisation_officer', 'data_entry_clerk')
+    valid_facility_ids = {f.facility_id for f in facilities}
+
+    if role not in valid_roles:
+        flash('Please select a valid role.', 'danger')
+        return render_template('create_user.html', facilities=facilities)
+
+    if facility_id not in valid_facility_ids:
+        flash('Please select a valid facility.', 'danger')
+        return render_template('create_user.html', facilities=facilities)
 
     if User.query.filter_by(username=username).first():
         flash('Username already exists.', 'danger')

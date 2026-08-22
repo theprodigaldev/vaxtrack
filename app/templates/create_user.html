@@ -39,6 +39,7 @@
             <div class="form-group">
                 <label for="facility_id">Facility</label>
                 <select id="facility_id" name="facility_id" required>
+                    <option value="" disabled selected>-- Select Facility --</option>
                     {% for f in facilities %}
                     <option value="{{ f.facility_id }}">{{ f.facility_name }}</option>
                     {% endfor %}
